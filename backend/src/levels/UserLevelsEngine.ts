@@ -1,4 +1,5 @@
-import { db } from '../database';
+import { db, pool } from '../database';
+import { PoolClient, Pool } from 'pg';
 import { config } from '../config';
 import { randomUUID as uuidv4 } from 'crypto';
 
@@ -14,14 +15,14 @@ export class UserLevelsEngine {
 
   public static readonly RULE_VERSION = 'v1.0.0_cumulative_verified_deposits';
 
-  static evaluateUserLevel(userId: string): UserLevelInfo {
-    const volRow = db.prepare(`
+  static async evaluateUserLevel(userId: string, client: PoolClient | Pool = pool): Promise<UserLevelInfo> {
+    const volRow = await db.get(`
       SELECT SUM(amount_usdt) as total_vol
       FROM deposit_verifications
       WHERE user_id = ? AND status = 'CREDITED'
-    `).get(userId) as { total_vol: number | null };
+    `, [userId], client) as { total_vol: string | number | null };
 
-    const qualifyingVolumeUsdt = volRow.total_vol || 0.0;
+    const qualifyingVolumeUsdt = Number(volRow?.total_vol) || 0.0;
 
     let newLevel = 0;
     if (qualifyingVolumeUsdt >= config.level1ThresholdUsdt) {
@@ -32,20 +33,20 @@ export class UserLevelsEngine {
       newLevel = 3;
     }
 
-    const existing = db.prepare('SELECT level FROM user_levels WHERE user_id = ?').get(userId) as { level: number } | undefined;
+    const existing = await db.get('SELECT level FROM user_levels WHERE user_id = ?', [userId], client) as { level: number } | undefined;
     const oldLevel = existing ? existing.level : 0;
 
     const nowIso = new Date().toISOString();
 
-    const evaluateTx = db.transaction(() => {
-      db.prepare(`
+    const runEval = async (c: PoolClient | Pool) => {
+      await db.run(`
         INSERT INTO user_levels (user_id, level, qualifying_volume_usdt, last_evaluated_at)
         VALUES (?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
           level = excluded.level,
           qualifying_volume_usdt = excluded.qualifying_volume_usdt,
           last_evaluated_at = excluded.last_evaluated_at
-      `).run(userId, newLevel, qualifyingVolumeUsdt, nowIso);
+      `, [userId, newLevel, qualifyingVolumeUsdt, nowIso], c);
 
       if (oldLevel !== newLevel || !existing) {
         const evidence = {
@@ -59,14 +60,20 @@ export class UserLevelsEngine {
           timestamp: nowIso
         };
 
-        db.prepare(`
+        await db.run(`
           INSERT INTO user_level_audit_logs (id, user_id, old_level, new_level, rule_version, evidence_json)
           VALUES (?, ?, ?, ?, ?, ?)
-        `).run(uuidv4(), userId, oldLevel, newLevel, UserLevelsEngine.RULE_VERSION, JSON.stringify(evidence));
+        `, [uuidv4(), userId, oldLevel, newLevel, UserLevelsEngine.RULE_VERSION, JSON.stringify(evidence)], c);
       }
-    });
+    };
 
-    evaluateTx();
+    if (client === pool) {
+      await db.transaction(async (txClient) => {
+        await runEval(txClient);
+      });
+    } else {
+      await runEval(client);
+    }
 
     let nextThreshold: number | null = null;
     if (newLevel === 0) nextThreshold = config.level3ThresholdUsdt;
@@ -82,24 +89,24 @@ export class UserLevelsEngine {
     };
   }
 
-  static getUserLevel(userId: string): UserLevelInfo {
-    const levelRecord = db.prepare('SELECT level, qualifying_volume_usdt, last_evaluated_at FROM user_levels WHERE user_id = ?').get(userId) as any;
+  static async getUserLevel(userId: string): Promise<UserLevelInfo> {
+    const levelRecord = await db.get('SELECT level, qualifying_volume_usdt, last_evaluated_at FROM user_levels WHERE user_id = ?', [userId]) as any;
     if (!levelRecord) {
-      return this.evaluateUserLevel(userId);
+      return await this.evaluateUserLevel(userId);
     }
     return {
       userId,
       level: levelRecord.level,
-      qualifyingVolumeUsdt: levelRecord.qualifying_volume_usdt,
+      qualifyingVolumeUsdt: Number(levelRecord.qualifying_volume_usdt),
       nextLevelThresholdUsdt: levelRecord.level === 1 ? null : (levelRecord.level === 2 ? config.level1ThresholdUsdt : config.level3ThresholdUsdt),
       lastEvaluatedAt: levelRecord.last_evaluated_at
     };
   }
 
-  static getAuditLogs(userId?: string) {
+  static async getAuditLogs(userId?: string) {
     if (userId) {
-      return db.prepare('SELECT * FROM user_level_audit_logs WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+      return await db.all('SELECT * FROM user_level_audit_logs WHERE user_id = ? ORDER BY created_at DESC', [userId]);
     }
-    return db.prepare('SELECT * FROM user_level_audit_logs ORDER BY created_at DESC LIMIT 100').all();
+    return await db.all('SELECT * FROM user_level_audit_logs ORDER BY created_at DESC LIMIT 100');
   }
 }

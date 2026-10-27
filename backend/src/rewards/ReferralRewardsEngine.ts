@@ -5,10 +5,10 @@ import { randomUUID as uuidv4 } from 'crypto';
 
 export class ReferralRewardsEngine {
 
-  static processReferralReward(refereeId: string) {
-    const relationships = db.prepare(`
+  static async processReferralReward(refereeId: string) {
+    const relationships = await db.all(`
       SELECT * FROM referral_relationships WHERE referee_id = ?
-    `).all(refereeId) as any[];
+    `, [refereeId]) as any[];
 
     const results = [];
 
@@ -19,7 +19,7 @@ export class ReferralRewardsEngine {
 
       const rewardReference = `REF_REWARD_L${rel.level}_${rel.referrer_id}_${refereeId}`;
 
-      const existingEvent = db.prepare('SELECT id FROM reward_events WHERE referrer_id = ? AND referee_id = ? AND level = ?').get(rel.referrer_id, refereeId, rel.level);
+      const existingEvent = await db.get('SELECT id FROM reward_events WHERE referrer_id = ? AND referee_id = ? AND level = ?', [rel.referrer_id, refereeId, rel.level]);
       if (existingEvent) {
         continue;
       }
@@ -27,12 +27,12 @@ export class ReferralRewardsEngine {
       const rewardId = uuidv4();
       const amountMicro = Math.round(rewardAmountUsdt * 1_000_000);
 
-      const referrerWallet = db.prepare("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'").get(rel.referrer_id) as { id: string } | undefined;
+      const referrerWallet = await db.get("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'", [rel.referrer_id]) as { id: string } | undefined;
       if (!referrerWallet) continue;
 
-      const systemWallet = LedgerService.getOrCreateSystemWallet();
+      const systemWallet = await LedgerService.getOrCreateSystemWallet();
 
-      const txId = LedgerService.postTransaction(
+      const txId = await LedgerService.postTransaction(
         rewardReference,
         'REFERRAL_REWARD',
         `Referral Reward Level ${rel.level} ($${rewardAmountUsdt} USDT)`,
@@ -42,10 +42,10 @@ export class ReferralRewardsEngine {
         ]
       );
 
-      db.prepare(`
+      await db.run(`
         INSERT INTO reward_events (id, referrer_id, referee_id, level, amount_usdt, status, transaction_id)
         VALUES (?, ?, ?, ?, ?, 'CREDITED', ?)
-      `).run(rewardId, rel.referrer_id, refereeId, rel.level, rewardAmountUsdt, txId);
+      `, [rewardId, rel.referrer_id, refereeId, rel.level, rewardAmountUsdt, txId]);
 
       results.push({
         rewardId,
@@ -59,16 +59,19 @@ export class ReferralRewardsEngine {
     return results;
   }
 
-  static getRewardsSummary(userId: string) {
-    const user = db.prepare('SELECT referral_code FROM users WHERE id = ?').get(userId) as { referral_code: string } | undefined;
+  static async getRewardsSummary(userId: string) {
+    const user = await db.get('SELECT referral_code FROM users WHERE id = ?', [userId]) as { referral_code: string } | undefined;
 
-    const level1Count = (db.prepare('SELECT COUNT(*) as cnt FROM referral_relationships WHERE referrer_id = ? AND level = 1').get(userId) as { cnt: number }).cnt;
-    const level2Count = (db.prepare('SELECT COUNT(*) as cnt FROM referral_relationships WHERE referrer_id = ? AND level = 2').get(userId) as { cnt: number }).cnt;
+    const level1Row = await db.get('SELECT COUNT(*) as cnt FROM referral_relationships WHERE referrer_id = ? AND level = 1', [userId]) as { cnt: string | number };
+    const level1Count = Number(level1Row?.cnt || 0);
 
-    const totalEarnedRow = db.prepare('SELECT SUM(amount_usdt) as sum FROM reward_events WHERE referrer_id = ? AND status = "CREDITED"').get(userId) as { sum: number | null };
-    const totalEarned = totalEarnedRow.sum || 0;
+    const level2Row = await db.get('SELECT COUNT(*) as cnt FROM referral_relationships WHERE referrer_id = ? AND level = 2', [userId]) as { cnt: string | number };
+    const level2Count = Number(level2Row?.cnt || 0);
 
-    const historyRows = db.prepare('SELECT id, amount_usdt, level, created_at FROM reward_events WHERE referrer_id = ? ORDER BY created_at DESC').all(userId) as any[];
+    const totalEarnedRow = await db.get("SELECT SUM(amount_usdt) as sum FROM reward_events WHERE referrer_id = ? AND status = 'CREDITED'", [userId]) as { sum: string | number | null };
+    const totalEarned = Number(totalEarnedRow?.sum) || 0;
+
+    const historyRows = await db.all('SELECT id, amount_usdt, level, created_at FROM reward_events WHERE referrer_id = ? ORDER BY created_at DESC', [userId]) as any[];
 
     const history = historyRows.map(r => ({
       transactionId: r.id,

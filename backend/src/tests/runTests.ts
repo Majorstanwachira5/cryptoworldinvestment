@@ -15,20 +15,20 @@ async function runTestSuite() {
   console.log('⚡ STARTING CRYPTOHUB AI 15-POINT BACKEND VERIFICATION TEST SUITE');
   console.log('====================================================\n');
 
-  initDatabase();
+  await initDatabase();
 
   // Test 1: Registered user retains same ID after login
   console.log('▶ Test 1: Permanent user identity & ID persistence...');
   const testEmail = `test_user_${Date.now()}@cryptohub.ai`;
-  const regResult = AuthService.register(testEmail, 'Password123!', 'Test User');
-  const loginResult = AuthService.login(testEmail, 'Password123!');
+  const regResult = await AuthService.register(testEmail, 'Password123!', 'Test User');
+  const loginResult = await AuthService.login(testEmail, 'Password123!');
   assert.strictEqual(regResult.userId, loginResult.userId, 'User ID must remain identical after login');
   console.log('  ✔ PASSED: Permanent user ID verified (User ID: ' + regResult.userId + ')\n');
 
   // Test 2: Unverified deposit cannot be credited
   console.log('▶ Test 2: Unverified deposit security check...');
-  const pr = PaymentVerificationEngine.createPaymentRequest(regResult.userId, 100);
-  const unverifiedResult = PaymentVerificationEngine.processDepositNotification({
+  const pr = await PaymentVerificationEngine.createPaymentRequest(regResult.userId, 100);
+  const unverifiedResult = await PaymentVerificationEngine.processDepositNotification({
     txHash: `0xUNVERIFIED_${Date.now()}`,
     network: 'TRC20',
     tokenContract: config.usdtTrc20ContractAddress,
@@ -42,7 +42,7 @@ async function runTestSuite() {
   // Test 3: Duplicate deposit event is credited at most once
   console.log('▶ Test 3: Idempotent deposit verification...');
   const txHash = `0xTX_DUPLICATE_${Date.now()}`;
-  const dep1 = PaymentVerificationEngine.processDepositNotification({
+  const dep1 = await PaymentVerificationEngine.processDepositNotification({
     txHash,
     network: 'TRC20',
     tokenContract: config.usdtTrc20ContractAddress,
@@ -52,7 +52,7 @@ async function runTestSuite() {
   });
   assert.strictEqual(dep1.status, 'CREDITED', 'First deposit notification must be CREDITED');
 
-  const dep2 = PaymentVerificationEngine.processDepositNotification({
+  const dep2 = await PaymentVerificationEngine.processDepositNotification({
     txHash,
     network: 'TRC20',
     tokenContract: config.usdtTrc20ContractAddress,
@@ -65,8 +65,9 @@ async function runTestSuite() {
 
   // Test 4: Wrong network or token is rejected
   console.log('▶ Test 4: Rejection of invalid network or token contract...');
-  assert.throws(() => {
-    PaymentVerificationEngine.processDepositNotification({
+  let caughtErrorNet = false;
+  try {
+    await PaymentVerificationEngine.processDepositNotification({
       txHash: `0xINVALID_NET_${Date.now()}`,
       network: 'ERC20', // Invalid network
       tokenContract: config.usdtTrc20ContractAddress,
@@ -74,10 +75,14 @@ async function runTestSuite() {
       amountUsdt: 50,
       confirmations: 12
     });
-  }, /Unsupported network/);
+  } catch (err: any) {
+    caughtErrorNet = err.message.includes('Unsupported network');
+  }
+  assert.ok(caughtErrorNet, 'Must throw unsupported network error');
 
-  assert.throws(() => {
-    PaymentVerificationEngine.processDepositNotification({
+  let caughtErrorToken = false;
+  try {
+    await PaymentVerificationEngine.processDepositNotification({
       txHash: `0xINVALID_TOKEN_${Date.now()}`,
       network: 'TRC20',
       tokenContract: 'TR_WRONG_CONTRACT_ADDRESS', // Invalid contract
@@ -85,16 +90,21 @@ async function runTestSuite() {
       amountUsdt: 50,
       confirmations: 12
     });
-  }, /Invalid token contract/);
+  } catch (err: any) {
+    caughtErrorToken = err.message.includes('Invalid token contract');
+  }
+  assert.ok(caughtErrorToken, 'Must throw invalid token contract error');
   console.log('  ✔ PASSED: Invalid network and token contract rejected\n');
 
   // Test 5: Level changes only when documented rules are satisfied
   console.log('▶ Test 5: Server-side User Level engine & audit trail...');
-  let levelInfo = UserLevelsEngine.getUserLevel(regResult.userId);
-  assert.strictEqual(levelInfo.level, 0, 'User with $200 deposit volume must be Level 0');
+  let levelInfo = await UserLevelsEngine.getUserLevel(regResult.userId);
+  console.log('  [TEST 5] Initial levelInfo:', levelInfo);
+  assert.strictEqual(levelInfo.level, 0, 'User with deposit volume below threshold must be Level 0');
 
-  const pr2 = PaymentVerificationEngine.createPaymentRequest(regResult.userId, 600);
-  PaymentVerificationEngine.processDepositNotification({
+  const pr2 = await PaymentVerificationEngine.createPaymentRequest(regResult.userId, 600);
+  console.log('  [TEST 5] Created pr2:', pr2);
+  const depRes5 = await PaymentVerificationEngine.processDepositNotification({
     txHash: `0xLEVEL_UP_${Date.now()}`,
     network: 'TRC20',
     tokenContract: config.usdtTrc20ContractAddress,
@@ -102,63 +112,70 @@ async function runTestSuite() {
     amountUsdt: 600,
     confirmations: 12
   });
+  console.log('  [TEST 5] deposit notification result:', depRes5);
 
-  levelInfo = UserLevelsEngine.getUserLevel(regResult.userId);
-  assert.strictEqual(levelInfo.level, 1, 'User with $700 volume must reach Level 1');
+  levelInfo = await UserLevelsEngine.getUserLevel(regResult.userId);
+  console.log('  [TEST 5] LevelInfo after deposit:', levelInfo);
+  assert.strictEqual(levelInfo.level, 1, 'User with sufficient volume must reach Level 1');
 
-  const auditLogs = UserLevelsEngine.getAuditLogs(regResult.userId);
+  const auditLogs = await UserLevelsEngine.getAuditLogs(regResult.userId);
   assert.ok(auditLogs.length > 0, 'Audit log must record level progression');
   console.log('  ✔ PASSED: Level progressed to Level 1 and recorded in audit log\n');
 
   // Test 6: Referral reward cannot be paid twice
   console.log('▶ Test 6: Idempotent referral reward processing...');
-  const refUser = AuthService.register(`referee_${Date.now()}@cryptohub.ai`, 'Pass123!', 'Referee User', regResult.referralCode);
-  const rewards1 = ReferralRewardsEngine.processReferralReward(refUser.userId);
-  const rewards2 = ReferralRewardsEngine.processReferralReward(refUser.userId);
+  const refUser = await AuthService.register(`referee_${Date.now()}@cryptohub.ai`, 'Pass123!', 'Referee User', regResult.referralCode);
+  const rewards1 = await ReferralRewardsEngine.processReferralReward(refUser.userId);
+  const rewards2 = await ReferralRewardsEngine.processReferralReward(refUser.userId);
   assert.strictEqual(rewards2.length, 0, 'Duplicate referral reward processing must yield 0 new payouts');
   console.log('  ✔ PASSED: Referral rewards paid exactly once per referee\n');
 
   // Test 7: Wednesday campaign cannot credit same user twice
   console.log('▶ Test 7: Wednesday promotional bonus campaign idempotency...');
-  const bonus1 = WednesdayBonusEngine.processWednesdayBonus(regResult.userId, '2026-W43');
+  const bonus1 = await WednesdayBonusEngine.processWednesdayBonus(regResult.userId, '2026-W43');
   assert.strictEqual(bonus1.status, 'CREDITED', 'First bonus claim must be CREDITED');
 
-  const bonus2 = WednesdayBonusEngine.processWednesdayBonus(regResult.userId, '2026-W43');
+  const bonus2 = await WednesdayBonusEngine.processWednesdayBonus(regResult.userId, '2026-W43');
   assert.strictEqual(bonus2.alreadyClaimed, true, 'Duplicate bonus claim in same week must return alreadyClaimed: true');
   console.log('  ✔ PASSED: Wednesday bonus claimed at most once per user per week\n');
 
 
   // Test 9: Concurrent withdrawals cannot overspend wallet
   console.log('▶ Test 9: Withdrawal reservation & overspend protection...');
-  const walletAfter = WalletService.getWalletSummary(regResult.userId);
+  const walletAfter = await WalletService.getWalletSummary(regResult.userId);
   const currentAvailable = walletAfter.availableBalance;
-  WalletService.requestWithdrawal(regResult.userId, 'T9xWithdrawalDest123456789012345', currentAvailable - 50);
+  await WalletService.requestWithdrawal(regResult.userId, 'T9xWithdrawalDest123456789012345', currentAvailable - 50);
 
-  assert.throws(() => {
-    WalletService.requestWithdrawal(regResult.userId, 'T9xWithdrawalDest123456789012345', 100);
-  }, /Insufficient available balance/);
+  let caughtOverspend = false;
+  try {
+    await WalletService.requestWithdrawal(regResult.userId, 'T9xWithdrawalDest123456789012345', 100);
+  } catch (err: any) {
+    caughtOverspend = err.message.includes('Insufficient available balance');
+  }
+  assert.ok(caughtOverspend, 'Must throw insufficient available balance');
   console.log('  ✔ PASSED: Second concurrent withdrawal rejected due to insufficient reserved balance\n');
 
   // Test 10: Timeout / retry cannot cause duplicate payout
   console.log('▶ Test 10: Withdrawal execution idempotency...');
-  const pendingReq = WalletService.getWithdrawalRequests(regResult.userId)[0] as any;
-  const exec1 = WalletService.approveAndExecuteWithdrawal(pendingReq.id, 'ADMIN_TEST', '0xTX_WITHDRAWAL_001');
+  const reqs = await WalletService.getWithdrawalRequests(regResult.userId) as any[];
+  const pendingReq = reqs[0];
+  const exec1 = await WalletService.approveAndExecuteWithdrawal(pendingReq.id, 'ADMIN_TEST', '0xTX_WITHDRAWAL_001');
   assert.strictEqual(exec1.status, 'CONFIRMED', 'First withdrawal execution must be CONFIRMED');
 
-  const exec2 = WalletService.approveAndExecuteWithdrawal(pendingReq.id, 'ADMIN_TEST', '0xTX_WITHDRAWAL_001');
+  const exec2 = await WalletService.approveAndExecuteWithdrawal(pendingReq.id, 'ADMIN_TEST', '0xTX_WITHDRAWAL_001');
   assert.strictEqual(exec2.status, 'CONFIRMED', 'Re-execution must return CONFIRMED without duplicate debit');
   console.log('  ✔ PASSED: Retry of withdrawal approval executed safely without double debit\n');
 
   // Test 11: Ledger transactions balance
   console.log('▶ Test 11: Double-entry accounting integrity...');
-  const txRows = db.prepare('SELECT id FROM ledger_transactions').all() as { id: string }[];
+  const txRows = await db.all('SELECT id FROM ledger_transactions') as { id: string }[];
   for (const tx of txRows) {
-    const entries = db.prepare('SELECT entry_type, amount_micro FROM ledger_entries WHERE transaction_id = ?').all(tx.id) as { entry_type: string; amount_micro: number }[];
+    const entries = await db.all('SELECT entry_type, amount_micro FROM ledger_entries WHERE transaction_id = ?', [tx.id]) as { entry_type: string; amount_micro: number | string }[];
     let debits = 0;
     let credits = 0;
     for (const e of entries) {
-      if (e.entry_type === 'DEBIT') debits += e.amount_micro;
-      else if (e.entry_type === 'CREDIT') credits += e.amount_micro;
+      if (e.entry_type === 'DEBIT') debits += Number(e.amount_micro);
+      else if (e.entry_type === 'CREDIT') credits += Number(e.amount_micro);
     }
     assert.strictEqual(debits, credits, `Ledger transaction ${tx.id} is unbalanced! DEBIT (${debits}) != CREDIT (${credits})`);
   }
@@ -184,9 +201,13 @@ async function runTestSuite() {
 
   // Test 15: Failed integrations never produce fabricated success states
   console.log('▶ Test 15: Fail-safe transaction handling...');
-  assert.throws(() => {
-    WalletService.requestWithdrawal(regResult.userId, 'T_DEST', 2.0); // Below 10 USDT minimum limit
-  }, /Minimum withdrawal/);
+  let caughtMinWithdrawal = false;
+  try {
+    await WalletService.requestWithdrawal(regResult.userId, 'T_DEST', 2.0); // Below minimum limit
+  } catch (err: any) {
+    caughtMinWithdrawal = err.message.includes('Minimum withdrawal');
+  }
+  assert.ok(caughtMinWithdrawal, 'Must throw minimum withdrawal error');
   console.log('  ✔ PASSED: Invalid transaction rejected cleanly without fake success\n');
 
   console.log('====================================================');

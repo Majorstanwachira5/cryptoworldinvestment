@@ -3,8 +3,8 @@ import { randomUUID as uuidv4 } from 'crypto';
 
 export class P2PService {
 
-  static getAds() {
-    const ads = db.prepare('SELECT * FROM p2p_ads ORDER BY created_at DESC').all() as any[];
+  static async getAds() {
+    const ads = await db.all('SELECT * FROM p2p_ads ORDER BY created_at DESC') as any[];
     if (ads.length === 0) {
       const sampleAds = [
         {
@@ -34,10 +34,21 @@ export class P2PService {
       ];
 
       for (const ad of sampleAds) {
-        db.prepare(`
+        await db.run(`
           INSERT INTO p2p_ads (id, user_id, merchant_name, type, price, fiat_currency, available_amount, min_limit, max_limit, payment_methods)
-          VALUES (@id, @user_id, @merchant_name, @type, @price, @fiat_currency, @available_amount, @min_limit, @max_limit, @payment_methods)
-        `).run(ad);
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          ad.id,
+          ad.user_id,
+          ad.merchant_name,
+          ad.type,
+          ad.price,
+          ad.fiat_currency,
+          ad.available_amount,
+          ad.min_limit,
+          ad.max_limit,
+          ad.payment_methods
+        ]);
       }
 
       return sampleAds.map(a => ({
@@ -66,8 +77,8 @@ export class P2PService {
     }));
   }
 
-  static createOrder(buyerId: string, adId: string, amountUsdt: number) {
-    const ad = db.prepare('SELECT * FROM p2p_ads WHERE id = ?').get(adId) as any;
+  static async createOrder(buyerId: string, adId: string, amountUsdt: number) {
+    const ad = await db.get('SELECT * FROM p2p_ads WHERE id = ?', [adId]) as any;
     if (!ad) throw new Error('P2P Advertisement not found.');
 
     if (amountUsdt < ad.min_limit || amountUsdt > ad.max_limit) {
@@ -77,10 +88,10 @@ export class P2PService {
     const orderId = uuidv4();
     const fiatAmount = amountUsdt * ad.price;
 
-    db.prepare(`
+    await db.run(`
       INSERT INTO p2p_orders (id, ad_id, buyer_id, seller_id, amount_usdt, fiat_amount, status)
       VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
-    `).run(orderId, adId, buyerId, ad.user_id, amountUsdt, fiatAmount);
+    `, [orderId, adId, buyerId, ad.user_id, amountUsdt, fiatAmount]);
 
     return {
       orderId,

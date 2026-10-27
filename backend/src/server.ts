@@ -12,7 +12,9 @@ import { UserLevelsEngine } from './levels/UserLevelsEngine';
 import { PaymentVerificationEngine } from './payments/PaymentVerificationEngine';
 import { WednesdayBonusEngine } from './promotions/WednesdayBonusEngine';
 
-initDatabase();
+initDatabase().catch(err => {
+  console.error('Failed to initialize database:', err);
+});
 
 const app = express();
 
@@ -54,17 +56,21 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', service: 'CryptoHub AI Shared Backend', timestamp: new Date().toISOString() });
 });
 
+app.get('/api/health', (req: Request, res: Response) => {
+  res.json({ status: 'ok', service: 'CryptoHub AI Shared Backend', timestamp: new Date().toISOString() });
+});
+
 // --- AUTH ROUTES ---
-app.post('/api/v1/auth/register', (req: Request, res: Response) => {
+app.post('/api/v1/auth/register', async (req: Request, res: Response) => {
   try {
     const { email, password, fullName, referralCode } = req.body;
     if (!email || !password || !fullName) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
-    const result = AuthService.register(email, password, fullName, referralCode);
+    const result = await AuthService.register(email, password, fullName, referralCode);
 
     if (referralCode) {
-      ReferralRewardsEngine.processReferralReward(result.userId);
+      await ReferralRewardsEngine.processReferralReward(result.userId);
     }
 
     res.json({ success: true, data: result });
@@ -73,25 +79,25 @@ app.post('/api/v1/auth/register', (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/v1/auth/login', (req: Request, res: Response) => {
+app.post('/api/v1/auth/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email and password required' });
     }
-    const result = AuthService.login(email, password);
+    const result = await AuthService.login(email, password);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
-app.get('/api/v1/users/me', authenticateToken, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/users/me', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const user = db.prepare('SELECT id, email, full_name, kyc_status, referral_code, mfa_enabled, created_at FROM users WHERE id = ?').get(req.userId) as any;
+    const user = await db.get('SELECT id, email, full_name, kyc_status, referral_code, mfa_enabled, created_at FROM users WHERE id = ?', [req.userId]) as any;
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    const levelInfo = UserLevelsEngine.getUserLevel(req.userId!);
+    const levelInfo = await UserLevelsEngine.getUserLevel(req.userId!);
 
     res.json({
       success: true,
@@ -113,9 +119,9 @@ app.get('/api/v1/users/me', authenticateToken, (req: AuthRequest, res: Response)
 });
 
 // --- USER LEVELS ROUTES ---
-app.get('/api/v1/users/level', authenticateToken, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/users/level', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const levelInfo = UserLevelsEngine.getUserLevel(req.userId!);
+    const levelInfo = await UserLevelsEngine.getUserLevel(req.userId!);
     res.json({ success: true, data: levelInfo });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -123,9 +129,9 @@ app.get('/api/v1/users/level', authenticateToken, (req: AuthRequest, res: Respon
 });
 
 // --- MARKETS ROUTES ---
-app.get('/api/v1/markets/pairs', (req: Request, res: Response) => {
+app.get('/api/v1/markets/pairs', async (req: Request, res: Response) => {
   try {
-    const pairs = db.prepare('SELECT * FROM market_pairs').all() as any[];
+    const pairs = await db.all('SELECT * FROM market_pairs') as any[];
     const data = pairs.map(p => ({
       symbol: p.symbol,
       baseAsset: p.base_asset,
@@ -142,11 +148,11 @@ app.get('/api/v1/markets/pairs', (req: Request, res: Response) => {
   }
 });
 
-app.get('/api/v1/markets/candles', (req: Request, res: Response) => {
+app.get('/api/v1/markets/candles', async (req: Request, res: Response) => {
   try {
     const symbol = (req.query.symbol as string) || 'BTC/USDT';
     const timeframe = (req.query.timeframe as string) || '1h';
-    const candles = db.prepare('SELECT * FROM candlesticks WHERE symbol = ? AND timeframe = ? ORDER BY timestamp ASC LIMIT 100').all(symbol, timeframe) as any[];
+    const candles = await db.all('SELECT * FROM candlesticks WHERE symbol = ? AND timeframe = ? ORDER BY timestamp ASC LIMIT 100', [symbol, timeframe]) as any[];
 
     const data = candles.map(c => ({
       timestamp: c.timestamp,
@@ -164,18 +170,18 @@ app.get('/api/v1/markets/candles', (req: Request, res: Response) => {
 
 
 // --- WALLET & LEDGER ROUTES ---
-app.get('/api/v1/wallet/summary', authenticateToken, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/wallet/summary', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const summary = WalletService.getWalletSummary(req.userId!);
+    const summary = await WalletService.getWalletSummary(req.userId!);
     res.json({ success: true, data: summary });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-app.get('/api/v1/wallet/transactions', authenticateToken, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/wallet/transactions', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const txs = WalletService.getTransactions(req.userId!);
+    const txs = await WalletService.getTransactions(req.userId!);
     res.json({ success: true, data: txs });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -183,7 +189,7 @@ app.get('/api/v1/wallet/transactions', authenticateToken, (req: AuthRequest, res
 });
 
 // --- PAYMENTS & DEPOSITS ROUTES ---
-app.get('/api/v1/deposits/address', authenticateToken, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/deposits/address', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const addr = WalletService.getDepositAddress(req.userId!);
     res.json({ success: true, data: addr });
@@ -192,20 +198,20 @@ app.get('/api/v1/deposits/address', authenticateToken, (req: AuthRequest, res: R
   }
 });
 
-app.post('/api/v1/deposits/request', authenticateToken, (req: AuthRequest, res: Response) => {
+app.post('/api/v1/deposits/request', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { amountUsdt } = req.body;
-    const result = PaymentVerificationEngine.createPaymentRequest(req.userId!, amountUsdt || 100.0);
+    const result = await PaymentVerificationEngine.createPaymentRequest(req.userId!, amountUsdt || 100.0);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
-app.post('/api/v1/deposits/webhook', (req: Request, res: Response) => {
+app.post('/api/v1/deposits/webhook', async (req: Request, res: Response) => {
   try {
     const { txHash, network, tokenContract, destinationAddress, amountUsdt, confirmations } = req.body;
-    const result = PaymentVerificationEngine.processDepositNotification({
+    const result = await PaymentVerificationEngine.processDepositNotification({
       txHash,
       network: network || 'TRC20',
       tokenContract: tokenContract || config.usdtTrc20ContractAddress,
@@ -219,9 +225,9 @@ app.post('/api/v1/deposits/webhook', (req: Request, res: Response) => {
   }
 });
 
-app.get('/api/v1/deposits/history', authenticateToken, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/deposits/history', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const history = PaymentVerificationEngine.getUserDeposits(req.userId!);
+    const history = await PaymentVerificationEngine.getUserDeposits(req.userId!);
     res.json({ success: true, data: history });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -229,19 +235,19 @@ app.get('/api/v1/deposits/history', authenticateToken, (req: AuthRequest, res: R
 });
 
 // --- WITHDRAWALS ROUTES ---
-app.post('/api/v1/withdrawals/request', authenticateToken, (req: AuthRequest, res: Response) => {
+app.post('/api/v1/withdrawals/request', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { address, amount } = req.body;
-    const tx = WalletService.requestWithdrawal(req.userId!, address, amount);
+    const tx = await WalletService.requestWithdrawal(req.userId!, address, amount);
     res.json({ success: true, data: tx });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
-app.get('/api/v1/withdrawals/history', authenticateToken, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/withdrawals/history', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const history = WalletService.getWithdrawalRequests(req.userId!);
+    const history = await WalletService.getWithdrawalRequests(req.userId!);
     res.json({ success: true, data: history });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -249,18 +255,18 @@ app.get('/api/v1/withdrawals/history', authenticateToken, (req: AuthRequest, res
 });
 
 // --- WEDNESDAY PROMOTIONAL BONUS ROUTES ---
-app.post('/api/v1/promotions/wednesday/claim', authenticateToken, (req: AuthRequest, res: Response) => {
+app.post('/api/v1/promotions/wednesday/claim', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const result = WednesdayBonusEngine.processWednesdayBonus(req.userId!);
+    const result = await WednesdayBonusEngine.processWednesdayBonus(req.userId!);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
-app.get('/api/v1/promotions/wednesday/history', authenticateToken, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/promotions/wednesday/history', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const history = WednesdayBonusEngine.getUserBonuses(req.userId!);
+    const history = await WednesdayBonusEngine.getUserBonuses(req.userId!);
     res.json({ success: true, data: history });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -268,9 +274,9 @@ app.get('/api/v1/promotions/wednesday/history', authenticateToken, (req: AuthReq
 });
 
 // --- REWARDS ROUTES ---
-app.get('/api/v1/rewards/summary', authenticateToken, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/rewards/summary', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const summary = ReferralRewardsEngine.getRewardsSummary(req.userId!);
+    const summary = await ReferralRewardsEngine.getRewardsSummary(req.userId!);
     res.json({ success: true, data: summary });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -278,19 +284,19 @@ app.get('/api/v1/rewards/summary', authenticateToken, (req: AuthRequest, res: Re
 });
 
 // --- P2P ROUTES ---
-app.get('/api/v1/p2p/ads', (req: Request, res: Response) => {
+app.get('/api/v1/p2p/ads', async (req: Request, res: Response) => {
   try {
-    const ads = P2PService.getAds();
+    const ads = await P2PService.getAds();
     res.json({ success: true, data: ads });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-app.post('/api/v1/p2p/orders', authenticateToken, (req: AuthRequest, res: Response) => {
+app.post('/api/v1/p2p/orders', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { adId, amount } = req.body;
-    const order = P2PService.createOrder(req.userId!, adId, amount);
+    const order = await P2PService.createOrder(req.userId!, adId, amount);
     res.json({ success: true, data: order });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
@@ -298,82 +304,83 @@ app.post('/api/v1/p2p/orders', authenticateToken, (req: AuthRequest, res: Respon
 });
 
 // --- ADMIN ROUTES ---
-app.get('/api/v1/admin/overview', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/admin/overview', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const metrics = AdminService.getOverviewMetrics();
+    const metrics = await AdminService.getOverviewMetrics();
     res.json({ success: true, data: metrics });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-app.get('/api/v1/admin/users', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/admin/users', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const users = AdminService.getUsers();
+    const users = await AdminService.getUsers();
     res.json({ success: true, data: users });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-app.post('/api/v1/admin/users/status', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+app.post('/api/v1/admin/users/status', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { targetUserId, suspend } = req.body;
-    const result = AdminService.toggleUserStatus(req.userId!, targetUserId, suspend);
+    const result = await AdminService.toggleUserStatus(req.userId!, targetUserId, suspend);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
-app.get('/api/v1/admin/levels/audit', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/admin/levels/audit', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const logs = UserLevelsEngine.getAuditLogs();
+    const logs = await UserLevelsEngine.getAuditLogs();
     res.json({ success: true, data: logs });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-app.get('/api/v1/admin/withdrawals', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/admin/withdrawals', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const requests = WalletService.getWithdrawalRequests();
+    const requests = await WalletService.getWithdrawalRequests();
     res.json({ success: true, data: requests });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-app.post('/api/v1/admin/withdrawals/approve', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+app.post('/api/v1/admin/withdrawals/approve', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { withdrawalId, txHash } = req.body;
-    const result = WalletService.approveAndExecuteWithdrawal(withdrawalId, req.userId!, txHash);
+    const result = await WalletService.approveAndExecuteWithdrawal(withdrawalId, req.userId!, txHash);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
-app.get('/api/v1/admin/ledger', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+app.get('/api/v1/admin/ledger', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const audit = AdminService.getLedgerAudit();
+    const audit = await AdminService.getLedgerAudit();
     res.json({ success: true, data: audit });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-app.post('/api/v1/admin/auth/login', (req: Request, res: Response) => {
+app.post('/api/v1/admin/auth/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
-    let admin = db.prepare('SELECT * FROM users WHERE email = ? AND role = "ADMIN"').get(email) as any;
+    let admin = await db.get('SELECT * FROM users WHERE email = ? AND role = $1', [email, 'ADMIN']) as any;
     if (!admin && email === 'admin@cryptohub.ai' && password === 'AdminPass123!') {
       const adminId = 'ADMIN_PRIMARY';
       const userReferralCode = 'ADM001';
-      db.prepare(`
-        INSERT OR REPLACE INTO users (id, email, password_hash, full_name, referral_code, role)
+      await db.run(`
+        INSERT INTO users (id, email, password_hash, full_name, referral_code, role)
         VALUES (?, ?, 'ADMIN_HASH', 'System Administrator', ?, 'ADMIN')
-      `).run(adminId, email, userReferralCode);
+        ON CONFLICT (id) DO UPDATE SET email = excluded.email, role = excluded.role
+      `, [adminId, email, userReferralCode]);
       admin = { id: adminId, email, role: 'ADMIN' };
     }
 

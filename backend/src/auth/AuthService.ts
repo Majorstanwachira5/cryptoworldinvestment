@@ -6,10 +6,10 @@ import { config } from '../config';
 
 export class AuthService {
 
-  static register(email: string, passwordPlain: string, fullName: string, referralCodeInput?: string) {
+  static async register(email: string, passwordPlain: string, fullName: string, referralCodeInput?: string) {
     const normalizedEmail = email.trim().toLowerCase();
 
-    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
+    const existingUser = await db.get('SELECT id FROM users WHERE email = ?', [normalizedEmail]);
     if (existingUser) {
       throw new Error('An account with this email already exists.');
     }
@@ -19,37 +19,35 @@ export class AuthService {
     const passwordHash = bcrypt.hashSync(passwordPlain, 10);
     const userReferralCode = 'CH' + Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    const registerTx = db.transaction(() => {
-      db.prepare(`
+    await db.transaction(async (client) => {
+      await db.run(`
         INSERT INTO users (id, email, password_hash, full_name, referral_code, role)
         VALUES (?, ?, ?, ?, ?, 'USER')
-      `).run(userId, normalizedEmail, passwordHash, fullName, userReferralCode);
+      `, [userId, normalizedEmail, passwordHash, fullName, userReferralCode], client);
 
-      db.prepare(`
+      await db.run(`
         INSERT INTO wallets (id, user_id, asset, total_balance_micro, reserved_balance_micro)
         VALUES (?, ?, 'USDT', 0, 0)
-      `).run(walletId, userId);
+      `, [walletId, userId], client);
 
       if (referralCodeInput) {
-        const referrer = db.prepare('SELECT id FROM users WHERE referral_code = ?').get(referralCodeInput.trim().toUpperCase()) as { id: string } | undefined;
+        const referrer = await db.get('SELECT id FROM users WHERE referral_code = ?', [referralCodeInput.trim().toUpperCase()], client) as { id: string } | undefined;
         if (referrer && referrer.id !== userId) {
-          db.prepare(`
+          await db.run(`
             INSERT INTO referral_relationships (id, referrer_id, referee_id, level)
             VALUES (?, ?, ?, 1)
-          `).run(uuidv4(), referrer.id, userId);
+          `, [uuidv4(), referrer.id, userId], client);
 
-          const level1Referrer = db.prepare('SELECT referrer_id FROM referral_relationships WHERE referee_id = ? AND level = 1').get(referrer.id) as { referrer_id: string } | undefined;
+          const level1Referrer = await db.get('SELECT referrer_id FROM referral_relationships WHERE referee_id = ? AND level = 1', [referrer.id], client) as { referrer_id: string } | undefined;
           if (level1Referrer && level1Referrer.referrer_id !== userId) {
-            db.prepare(`
+            await db.run(`
               INSERT INTO referral_relationships (id, referrer_id, referee_id, level)
               VALUES (?, ?, ?, 2)
-            `).run(uuidv4(), level1Referrer.referrer_id, userId);
+            `, [uuidv4(), level1Referrer.referrer_id, userId], client);
           }
         }
       }
     });
-
-    registerTx();
 
     const accessToken = jwt.sign({ userId, email: normalizedEmail, role: 'USER' }, config.jwtSecret, { expiresIn: '7d' });
     const refreshToken = jwt.sign({ userId, type: 'refresh' }, config.jwtSecret, { expiresIn: '30d' });
@@ -64,9 +62,9 @@ export class AuthService {
     };
   }
 
-  static login(email: string, passwordPlain: string) {
+  static async login(email: string, passwordPlain: string) {
     const normalizedEmail = email.trim().toLowerCase();
-    const user = db.prepare('SELECT id, password_hash, full_name, referral_code, role, is_suspended FROM users WHERE email = ?').get(normalizedEmail) as any;
+    const user = await db.get('SELECT id, password_hash, full_name, referral_code, role, is_suspended FROM users WHERE email = ?', [normalizedEmail]) as any;
 
     if (!user) {
       throw new Error('Invalid email or password.');

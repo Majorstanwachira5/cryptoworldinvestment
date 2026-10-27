@@ -1,10 +1,50 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import { config } from './config';
 
 export const pool = new Pool({
   connectionString: config.databaseUrl,
   ssl: { rejectUnauthorized: false }
 });
+
+function convertSql(sql: string): string {
+  let index = 1;
+  return sql.replace(/\?/g, () => `$${index++}`);
+}
+
+export const db = {
+  async query(text: string, params?: any[], client: PoolClient | Pool = pool) {
+    return client.query(text, params);
+  },
+  async get(sql: string, params: any[] = [], client: PoolClient | Pool = pool) {
+    const pgSql = convertSql(sql);
+    const res = await client.query(pgSql, params);
+    return res.rows[0];
+  },
+  async all(sql: string, params: any[] = [], client: PoolClient | Pool = pool) {
+    const pgSql = convertSql(sql);
+    const res = await client.query(pgSql, params);
+    return res.rows;
+  },
+  async run(sql: string, params: any[] = [], client: PoolClient | Pool = pool) {
+    const pgSql = convertSql(sql);
+    const res = await client.query(pgSql, params);
+    return { rowCount: res.rowCount, rows: res.rows };
+  },
+  async transaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await callback(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+};
 
 export async function initDatabase() {
   const client = await pool.connect();
@@ -197,6 +237,10 @@ export async function initDatabase() {
         is_active INTEGER NOT NULL DEFAULT 1,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      INSERT INTO wednesday_campaigns (id, campaign_code, reward_amount_usdt, max_budget_usdt, spent_budget_usdt, start_date, end_date, is_active)
+      VALUES ('CAMPAIGN_DEFAULT', '2026-W43', 1.0, 10000.0, 0.0, '2026-01-01T00:00:00Z', '2026-12-31T23:59:59Z', 1)
+      ON CONFLICT (campaign_code) DO NOTHING;
 
       CREATE TABLE IF NOT EXISTS wednesday_bonus_events (
         id TEXT PRIMARY KEY,

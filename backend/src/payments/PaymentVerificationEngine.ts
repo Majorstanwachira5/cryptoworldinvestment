@@ -24,14 +24,14 @@ export interface WebhookNotification {
 
 export class PaymentVerificationEngine {
 
-  static createPaymentRequest(userId: string, requestedAmountUsdt: number): PaymentRequestResult {
+  static async createPaymentRequest(userId: string, requestedAmountUsdt: number): Promise<PaymentRequestResult> {
     const paymentRequestId = `PR_${uuidv4().substring(0, 8)}`;
     const destinationAddress = 'T' + Buffer.from(userId.replace(/-/g, '')).toString('hex').substring(0, 33).toUpperCase();
 
-    db.prepare(`
+    await db.run(`
       INSERT INTO deposit_verifications (id, user_id, payment_request_id, network, token_contract, destination_address, amount_usdt, status, required_confirmations)
       VALUES (?, ?, ?, 'TRC20', ?, ?, ?, 'PAYMENT_REQUESTED', ?)
-    `).run(uuidv4(), userId, paymentRequestId, config.usdtTrc20ContractAddress, destinationAddress, requestedAmountUsdt, config.requiredDepositConfirmations);
+    `, [uuidv4(), userId, paymentRequestId, config.usdtTrc20ContractAddress, destinationAddress, requestedAmountUsdt, config.requiredDepositConfirmations]);
 
     return {
       paymentRequestId,
@@ -43,7 +43,7 @@ export class PaymentVerificationEngine {
     };
   }
 
-  static processDepositNotification(notification: WebhookNotification) {
+  static async processDepositNotification(notification: WebhookNotification) {
     if (notification.network !== 'TRC20') {
       throw new Error(`Unsupported network '${notification.network}'. Only TRC20 is supported.`);
     }
@@ -52,15 +52,15 @@ export class PaymentVerificationEngine {
       throw new Error(`Invalid token contract '${notification.tokenContract}'. Only TRC20 USDT is accepted.`);
     }
 
-    const existingCredited = db.prepare("SELECT id, status FROM deposit_verifications WHERE tx_hash = ? AND status = 'CREDITED'").get(notification.txHash);
+    const existingCredited = await db.get("SELECT id, status FROM deposit_verifications WHERE tx_hash = ? AND status = 'CREDITED'", [notification.txHash]);
     if (existingCredited) {
       return { success: true, message: 'Deposit already processed and credited.', status: 'CREDITED', duplicate: true };
     }
 
-    let record = db.prepare('SELECT * FROM deposit_verifications WHERE tx_hash = ?').get(notification.txHash) as any;
+    let record = await db.get('SELECT * FROM deposit_verifications WHERE tx_hash = ?', [notification.txHash]) as any;
 
     if (!record) {
-      record = db.prepare("SELECT * FROM deposit_verifications WHERE destination_address = ? AND status IN ('PAYMENT_REQUESTED', 'CONFIRMATION_PENDING') ORDER BY created_at DESC").get(notification.destinationAddress) as any;
+      record = await db.get("SELECT * FROM deposit_verifications WHERE destination_address = ? AND status IN ('PAYMENT_REQUESTED', 'CONFIRMATION_PENDING') ORDER BY created_at DESC", [notification.destinationAddress]) as any;
     }
 
     if (!record) {
@@ -74,21 +74,21 @@ export class PaymentVerificationEngine {
 
     const nowIso = new Date().toISOString();
 
-    const processTx = db.transaction(() => {
-      db.prepare(`
+    await db.transaction(async (client) => {
+      await db.run(`
         UPDATE deposit_verifications
         SET tx_hash = ?, confirmations = ?, status = ?, updated_at = ?
         WHERE id = ?
-      `).run(notification.txHash, notification.confirmations, nextStatus, nowIso, record.id);
+      `, [notification.txHash, notification.confirmations, nextStatus, nowIso, record.id], client);
 
       if (nextStatus === 'VERIFIED') {
-        const userWallet = db.prepare("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'").get(record.user_id) as { id: string } | undefined;
+        const userWallet = await db.get("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'", [record.user_id], client) as { id: string } | undefined;
         if (userWallet) {
-          const systemWallet = LedgerService.getOrCreateSystemWallet();
+          const systemWallet = await LedgerService.getOrCreateSystemWallet();
           const amountMicro = Math.round(notification.amountUsdt * 1_000_000);
           const ledgerRef = `DEPOSIT_${notification.txHash}`;
 
-          LedgerService.postTransaction(
+          await LedgerService.postTransaction(
             ledgerRef,
             'DEPOSIT',
             `TRC20 USDT Verified Deposit (Tx: ${notification.txHash.substring(0, 8)}...)`,
@@ -98,17 +98,15 @@ export class PaymentVerificationEngine {
             ]
           );
 
-          db.prepare("UPDATE deposit_verifications SET status = 'CREDITED', updated_at = ? WHERE id = ?")
-            .run(nowIso, record.id);
+          await db.run("UPDATE deposit_verifications SET status = 'CREDITED', updated_at = ? WHERE id = ?",
+            [nowIso, record.id], client);
 
-          UserLevelsEngine.evaluateUserLevel(record.user_id);
+          await UserLevelsEngine.evaluateUserLevel(record.user_id, client);
         }
       }
     });
 
-    processTx();
-
-    const updated = db.prepare('SELECT * FROM deposit_verifications WHERE id = ?').get(record.id) as any;
+    const updated = await db.get('SELECT * FROM deposit_verifications WHERE id = ?', [record.id]) as any;
 
     return {
       success: true,
@@ -121,7 +119,7 @@ export class PaymentVerificationEngine {
     };
   }
 
-  static getUserDeposits(userId: string) {
-    return db.prepare('SELECT * FROM deposit_verifications WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+  static async getUserDeposits(userId: string) {
+    return await db.all('SELECT * FROM deposit_verifications WHERE user_id = ? ORDER BY created_at DESC', [userId]);
   }
 }

@@ -22,11 +22,11 @@ export class WednesdayBonusEngine {
     return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
   }
 
-  static processWednesdayBonus(userId: string, weekCodeInput?: string): BonusResult {
+  static async processWednesdayBonus(userId: string, weekCodeInput?: string): Promise<BonusResult> {
     const weekCode = weekCodeInput || this.getIsoWeekCode();
     const eventKey = `WED_BONUS_${weekCode}_${userId}`;
 
-    const existing = db.prepare('SELECT id, status, amount_usdt FROM wednesday_bonus_events WHERE event_key = ?').get(eventKey) as any;
+    const existing = await db.get('SELECT id, status, amount_usdt FROM wednesday_bonus_events WHERE event_key = ?', [eventKey]) as any;
     if (existing) {
       return {
         eventId: existing.id,
@@ -38,28 +38,28 @@ export class WednesdayBonusEngine {
       };
     }
 
-    const campaign = db.prepare('SELECT id, reward_amount_usdt, max_budget_usdt, spent_budget_usdt, is_active FROM wednesday_campaigns WHERE is_active = 1 LIMIT 1').get() as any;
+    const campaign = await db.get('SELECT id, reward_amount_usdt, max_budget_usdt, spent_budget_usdt, is_active FROM wednesday_campaigns WHERE is_active = 1 LIMIT 1') as any;
     if (!campaign) {
       throw new Error('Wednesday promotional campaign is currently not active.');
     }
 
     const rewardAmount = campaign.reward_amount_usdt;
-    if (campaign.spent_budget_usdt + rewardAmount > campaign.max_budget_usdt) {
+    if (Number(campaign.spent_budget_usdt) + rewardAmount > Number(campaign.max_budget_usdt)) {
       throw new Error('Wednesday promotional campaign budget limit reached.');
     }
 
-    const userWallet = db.prepare("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'").get(userId) as { id: string } | undefined;
+    const userWallet = await db.get("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'", [userId]) as { id: string } | undefined;
     if (!userWallet) {
       throw new Error('User USDT wallet not found.');
     }
 
-    const systemWallet = LedgerService.getOrCreateSystemWallet();
+    const systemWallet = await LedgerService.getOrCreateSystemWallet();
 
     const amountMicro = Math.round(rewardAmount * 1_000_000);
     const eventId = uuidv4();
 
-    const bonusTx = db.transaction(() => {
-      const txId = LedgerService.postTransaction(
+    const txId = await db.transaction(async (client) => {
+      const ledgerTxId = await LedgerService.postTransaction(
         eventKey,
         'PROMOTIONAL_BONUS',
         `Wednesday Promotional Bonus (${weekCode})`,
@@ -69,18 +69,16 @@ export class WednesdayBonusEngine {
         ]
       );
 
-      db.prepare(`
+      await db.run(`
         INSERT INTO wednesday_bonus_events (id, event_key, user_id, campaign_id, amount_usdt, status, transaction_id)
         VALUES (?, ?, ?, ?, ?, 'CREDITED', ?)
-      `).run(eventId, eventKey, userId, campaign.id, rewardAmount, txId);
+      `, [eventId, eventKey, userId, campaign.id, rewardAmount, ledgerTxId], client);
 
-      db.prepare('UPDATE wednesday_campaigns SET spent_budget_usdt = spent_budget_usdt + ? WHERE id = ?')
-        .run(rewardAmount, campaign.id);
+      await db.run('UPDATE wednesday_campaigns SET spent_budget_usdt = spent_budget_usdt + ? WHERE id = ?',
+        [rewardAmount, campaign.id], client);
 
-      return txId;
+      return ledgerTxId;
     });
-
-    bonusTx();
 
     return {
       eventId,
@@ -92,7 +90,7 @@ export class WednesdayBonusEngine {
     };
   }
 
-  static getUserBonuses(userId: string) {
-    return db.prepare('SELECT * FROM wednesday_bonus_events WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+  static async getUserBonuses(userId: string) {
+    return await db.all('SELECT * FROM wednesday_bonus_events WHERE user_id = ? ORDER BY created_at DESC', [userId]);
   }
 }

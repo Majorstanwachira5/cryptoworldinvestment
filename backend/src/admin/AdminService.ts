@@ -3,15 +3,21 @@ import { randomUUID as uuidv4 } from 'crypto';
 
 export class AdminService {
 
-  static getOverviewMetrics() {
-    const totalUsers = (db.prepare('SELECT COUNT(*) as count FROM users WHERE role = "USER"').get() as { count: number }).count;
-    const activeUsers = (db.prepare('SELECT COUNT(*) as count FROM users WHERE is_suspended = 0 AND role = "USER"').get() as { count: number }).count;
+  static async getOverviewMetrics() {
+    const totalUsersRow = await db.get('SELECT COUNT(*) as count FROM users WHERE role = $1', ['USER']) as { count: string | number };
+    const totalUsers = Number(totalUsersRow?.count || 0);
 
-    const liabilitiesRow = db.prepare('SELECT SUM(total_balance_micro) as sum FROM wallets WHERE user_id != "SYSTEM_TREASURY"').get() as { sum: number | null };
-    const walletLiabilitiesUsdt = (liabilitiesRow.sum || 0) / 1_000_000;
+    const activeUsersRow = await db.get('SELECT COUNT(*) as count FROM users WHERE is_suspended = 0 AND role = $1', ['USER']) as { count: string | number };
+    const activeUsers = Number(activeUsersRow?.count || 0);
 
-    const totalOrders = (db.prepare('SELECT COUNT(*) as count FROM orders').get() as { count: number }).count;
-    const totalRewardsPaid = (db.prepare('SELECT SUM(amount_usdt) as sum FROM reward_events WHERE status = "CREDITED"').get() as { sum: number | null }).sum || 0;
+    const liabilitiesRow = await db.get('SELECT SUM(total_balance_micro) as sum FROM wallets WHERE user_id != $1', ['SYSTEM_TREASURY']) as { sum: string | number | null };
+    const walletLiabilitiesUsdt = (Number(liabilitiesRow?.sum) || 0) / 1_000_000;
+
+    const totalOrdersRow = await db.get('SELECT COUNT(*) as count FROM orders') as { count: string | number };
+    const totalOrders = Number(totalOrdersRow?.count || 0);
+
+    const totalRewardsRow = await db.get('SELECT SUM(amount_usdt) as sum FROM reward_events WHERE status = $1', ['CREDITED']) as { sum: string | number | null };
+    const totalRewardsPaid = Number(totalRewardsRow?.sum) || 0;
 
     return {
       totalUsers,
@@ -23,8 +29,8 @@ export class AdminService {
     };
   }
 
-  static getUsers() {
-    const users = db.prepare('SELECT id, email, full_name, kyc_status, referral_code, is_suspended, created_at FROM users ORDER BY created_at DESC').all() as any[];
+  static async getUsers() {
+    const users = await db.all('SELECT id, email, full_name, kyc_status, referral_code, is_suspended, created_at FROM users ORDER BY created_at DESC') as any[];
     return users.map(u => ({
       userId: u.id,
       email: u.email,
@@ -36,36 +42,36 @@ export class AdminService {
     }));
   }
 
-  static toggleUserStatus(adminId: string, targetUserId: string, suspend: boolean) {
-    db.prepare('UPDATE users SET is_suspended = ? WHERE id = ?').run(suspend ? 1 : 0, targetUserId);
+  static async toggleUserStatus(adminId: string, targetUserId: string, suspend: boolean) {
+    await db.run('UPDATE users SET is_suspended = ? WHERE id = ?', [suspend ? 1 : 0, targetUserId]);
 
-    db.prepare(`
+    await db.run(`
       INSERT INTO admin_audit_logs (id, admin_id, action, target_type, target_id, details)
       VALUES (?, ?, ?, 'USER', ?, ?)
-    `).run(uuidv4(), adminId, suspend ? 'SUSPEND_USER' : 'REINSTATE_USER', targetUserId, `User ${targetUserId} status changed to ${suspend ? 'suspended' : 'active'}`);
+    `, [uuidv4(), adminId, suspend ? 'SUSPEND_USER' : 'REINSTATE_USER', targetUserId, `User ${targetUserId} status changed to ${suspend ? 'suspended' : 'active'}`]);
 
     return { success: true, targetUserId, isSuspended: suspend };
   }
 
-  static getLedgerAudit() {
-    const transactions = db.prepare(`
+  static async getLedgerAudit() {
+    const transactions = await db.all(`
       SELECT id, reference, type, description, created_at
       FROM ledger_transactions
       ORDER BY created_at DESC
       LIMIT 100
-    `).all() as any[];
+    `) as any[];
 
-    const entriesStmt = db.prepare(`
-      SELECT le.id, le.wallet_id, le.entry_type, le.amount_micro, u.email
-      FROM ledger_entries le
-      LEFT JOIN wallets w ON le.wallet_id = w.id
-      LEFT JOIN users u ON w.user_id = u.id
-      WHERE le.transaction_id = ?
-    `);
+    const result = [];
+    for (const tx of transactions) {
+      const entries = await db.all(`
+        SELECT le.id, le.wallet_id, le.entry_type, le.amount_micro, u.email
+        FROM ledger_entries le
+        LEFT JOIN wallets w ON le.wallet_id = w.id
+        LEFT JOIN users u ON w.user_id = u.id
+        WHERE le.transaction_id = ?
+      `, [tx.id]) as any[];
 
-    return transactions.map(tx => {
-      const entries = entriesStmt.all(tx.id) as any[];
-      return {
+      result.push({
         transactionId: tx.id,
         reference: tx.reference,
         type: tx.type,
@@ -76,9 +82,11 @@ export class AdminService {
           walletId: e.wallet_id,
           userEmail: e.email || 'SYSTEM',
           type: e.entry_type,
-          amountUsdt: e.amount_micro / 1_000_000
+          amountUsdt: Number(e.amount_micro) / 1_000_000
         }))
-      };
-    });
+      });
+    }
+
+    return result;
   }
 }

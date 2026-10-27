@@ -5,17 +5,17 @@ import { randomUUID as uuidv4 } from 'crypto';
 
 export class WalletService {
 
-  static getWalletSummary(userId: string) {
-    let wallet = db.prepare("SELECT id, total_balance_micro, reserved_balance_micro FROM wallets WHERE user_id = ? AND asset = 'USDT'").get(userId) as any;
+  static async getWalletSummary(userId: string) {
+    let wallet = await db.get("SELECT id, total_balance_micro, reserved_balance_micro FROM wallets WHERE user_id = ? AND asset = 'USDT'", [userId]) as any;
 
     if (!wallet) {
       const walletId = uuidv4();
-      db.prepare("INSERT INTO wallets (id, user_id, asset, total_balance_micro, reserved_balance_micro) VALUES (?, ?, 'USDT', 0, 0)").run(walletId, userId);
+      await db.run("INSERT INTO wallets (id, user_id, asset, total_balance_micro, reserved_balance_micro) VALUES (?, ?, 'USDT', 0, 0)", [walletId, userId]);
       wallet = { id: walletId, total_balance_micro: 0, reserved_balance_micro: 0 };
     }
 
-    const totalBalance = wallet.total_balance_micro / 1_000_000;
-    const reservedBalance = wallet.reserved_balance_micro / 1_000_000;
+    const totalBalance = Number(wallet.total_balance_micro) / 1_000_000;
+    const reservedBalance = Number(wallet.reserved_balance_micro) / 1_000_000;
     const availableBalance = Math.max(0, totalBalance - reservedBalance);
 
     return {
@@ -26,22 +26,22 @@ export class WalletService {
     };
   }
 
-  static getTransactions(userId: string) {
-    const wallet = db.prepare("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'").get(userId) as { id: string } | undefined;
+  static async getTransactions(userId: string) {
+    const wallet = await db.get("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'", [userId]) as { id: string } | undefined;
     if (!wallet) return [];
 
-    const entries = db.prepare(`
+    const entries = await db.all(`
       SELECT le.entry_type, le.amount_micro, le.created_at, lt.type, lt.reference, lt.description
       FROM ledger_entries le
       JOIN ledger_transactions lt ON le.transaction_id = lt.id
       WHERE le.wallet_id = ?
       ORDER BY le.created_at DESC
-    `).all(wallet.id) as any[];
+    `, [wallet.id]) as any[];
 
     return entries.map((e, idx) => ({
       transactionId: `TX_${idx}_${e.reference.substring(0, 8)}`,
       type: e.type,
-      amount: (e.entry_type === 'CREDIT' ? 1 : -1) * (e.amount_micro / 1_000_000),
+      amount: (e.entry_type === 'CREDIT' ? 1 : -1) * (Number(e.amount_micro) / 1_000_000),
       status: 'CREDITED',
       reference: e.description || e.reference,
       timestamp: e.created_at
@@ -59,15 +59,15 @@ export class WalletService {
     };
   }
 
-  static requestWithdrawal(userId: string, address: string, amountUsdt: number) {
+  static async requestWithdrawal(userId: string, address: string, amountUsdt: number) {
     if (amountUsdt < config.minWithdrawalUsdt) {
       throw new Error(`Minimum withdrawal amount is ${config.minWithdrawalUsdt} USDT.`);
     }
 
-    const wallet = db.prepare("SELECT id, total_balance_micro, reserved_balance_micro FROM wallets WHERE user_id = ? AND asset = 'USDT'").get(userId) as any;
+    const wallet = await db.get("SELECT id, total_balance_micro, reserved_balance_micro FROM wallets WHERE user_id = ? AND asset = 'USDT'", [userId]) as any;
     if (!wallet) throw new Error('Wallet not found.');
 
-    const availableMicro = wallet.total_balance_micro - wallet.reserved_balance_micro;
+    const availableMicro = Number(wallet.total_balance_micro) - Number(wallet.reserved_balance_micro);
     const amountMicro = Math.round(amountUsdt * 1_000_000);
 
     if (availableMicro < amountMicro) {
@@ -78,16 +78,14 @@ export class WalletService {
     const feeUsdt = config.withdrawalFeeUsdt;
     const netReceiveUsdt = Math.max(0, amountUsdt - feeUsdt);
 
-    const withdrawalTx = db.transaction(() => {
-      LedgerService.reserveAmount(wallet.id, amountMicro);
+    await db.transaction(async (client) => {
+      await LedgerService.reserveAmount(wallet.id, amountMicro);
 
-      db.prepare(`
+      await db.run(`
         INSERT INTO withdrawal_requests (id, user_id, destination_address, network, amount_usdt, fee_usdt, net_receive_usdt, status, risk_score)
         VALUES (?, ?, ?, 'TRC20', ?, ?, ?, 'PENDING_REVIEW', 0.0)
-      `).run(withdrawalId, userId, address, amountUsdt, feeUsdt, netReceiveUsdt);
+      `, [withdrawalId, userId, address, amountUsdt, feeUsdt, netReceiveUsdt], client);
     });
-
-    withdrawalTx();
 
     return {
       withdrawalId,
@@ -101,25 +99,25 @@ export class WalletService {
     };
   }
 
-  static approveAndExecuteWithdrawal(withdrawalId: string, adminId: string, txHash?: string) {
-    const req = db.prepare('SELECT * FROM withdrawal_requests WHERE id = ?').get(withdrawalId) as any;
+  static async approveAndExecuteWithdrawal(withdrawalId: string, adminId: string, txHash?: string) {
+    const req = await db.get('SELECT * FROM withdrawal_requests WHERE id = ?', [withdrawalId]) as any;
     if (!req) throw new Error('Withdrawal request not found.');
 
     if (req.status === 'CONFIRMED') {
       return { success: true, message: 'Withdrawal already executed.', status: 'CONFIRMED' };
     }
 
-    const wallet = db.prepare("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'").get(req.user_id) as any;
+    const wallet = await db.get("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'", [req.user_id]) as any;
     if (!wallet) throw new Error('User wallet not found.');
 
-    const amountMicro = Math.round(req.amount_usdt * 1_000_000);
+    const amountMicro = Math.round(Number(req.amount_usdt) * 1_000_000);
     const withdrawalRef = `WITHDRAWAL_${req.id}`;
     const hash = txHash || `0x${uuidv4().replace(/-/g, '')}`;
 
-    const systemWallet = LedgerService.getOrCreateSystemWallet();
+    const systemWallet = await LedgerService.getOrCreateSystemWallet();
 
-    const approveTx = db.transaction(() => {
-      LedgerService.postTransaction(
+    await db.transaction(async (client) => {
+      await LedgerService.postTransaction(
         withdrawalRef,
         'WITHDRAWAL',
         `TRC20 USDT Withdrawal to ${req.destination_address} (Tx: ${hash.substring(0, 8)}...)`,
@@ -129,21 +127,19 @@ export class WalletService {
         ]
       );
 
-      LedgerService.releaseReservation(wallet.id, amountMicro);
+      await LedgerService.releaseReservation(wallet.id, amountMicro);
 
-      db.prepare(`
+      await db.run(`
         UPDATE withdrawal_requests
         SET status = 'CONFIRMED', tx_hash = ?, updated_at = ?
         WHERE id = ?
-      `).run(hash, new Date().toISOString(), withdrawalId);
+      `, [hash, new Date().toISOString(), withdrawalId], client);
 
-      db.prepare(`
+      await db.run(`
         INSERT INTO admin_audit_logs (id, admin_id, action, target_type, target_id, details)
         VALUES (?, ?, 'APPROVE_WITHDRAWAL', 'WITHDRAWAL', ?, ?)
-      `).run(uuidv4(), adminId, withdrawalId, `Approved withdrawal ${withdrawalId} for $${req.amount_usdt} USDT to ${req.destination_address}`);
+      `, [uuidv4(), adminId, withdrawalId, `Approved withdrawal ${withdrawalId} for $${req.amount_usdt} USDT to ${req.destination_address}`], client);
     });
-
-    approveTx();
 
     return {
       withdrawalId,
@@ -152,10 +148,10 @@ export class WalletService {
     };
   }
 
-  static getWithdrawalRequests(userId?: string) {
+  static async getWithdrawalRequests(userId?: string) {
     if (userId) {
-      return db.prepare('SELECT * FROM withdrawal_requests WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+      return await db.all('SELECT * FROM withdrawal_requests WHERE user_id = ? ORDER BY created_at DESC', [userId]);
     }
-    return db.prepare('SELECT w.*, u.email FROM withdrawal_requests w JOIN users u ON w.user_id = u.id ORDER BY w.created_at DESC').all();
+    return await db.all('SELECT w.*, u.email FROM withdrawal_requests w JOIN users u ON w.user_id = u.id ORDER BY w.created_at DESC');
   }
 }
