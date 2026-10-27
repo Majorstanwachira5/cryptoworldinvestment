@@ -21,7 +21,6 @@ import cryptoworldinvestement.com.feature.markets.MarketsScreen
 import cryptoworldinvestement.com.feature.p2p.P2PScreen
 import cryptoworldinvestement.com.feature.profile.ProfileScreen
 import cryptoworldinvestement.com.feature.rewards.RewardsScreen
-import cryptoworldinvestement.com.feature.trading.BacktestingScreen
 import cryptoworldinvestement.com.feature.trading.TradingScreen
 import cryptoworldinvestement.com.feature.wallet.DepositScreen
 import cryptoworldinvestement.com.feature.wallet.WalletScreen
@@ -178,12 +177,7 @@ fun AppNavigation(
                 )
             }
 
-            composable("backtesting") {
-                BacktestingScreen(
-                    result = backtestResult,
-                    onRunBacktest = { strat, sym, cap -> mainViewModel.runBacktest(strat, sym, cap) }
-                )
-            }
+
 
             composable("wallet") {
                 WalletScreen(

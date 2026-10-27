@@ -38,8 +38,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _orders = MutableStateFlow<List<OrderResponse>>(emptyList())
     val orders: StateFlow<List<OrderResponse>> = _orders.asStateFlow()
 
-    private val _backtestResult = MutableStateFlow<BacktestResponse?>(null)
-    val backtestResult: StateFlow<BacktestResponse?> = _backtestResult.asStateFlow()
 
     private val _transactions = MutableStateFlow<List<TransactionRecord>>(emptyList())
     val transactions: StateFlow<List<TransactionRecord>> = _transactions.asStateFlow()
@@ -184,17 +182,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun runBacktest(strategy: String, symbol: String, capital: Double) {
-        viewModelScope.launch {
-            try {
-                val req = BacktestRequest(strategy, symbol, capital, "1h", 30)
-                val res = apiService.runBacktest(req)
-                if (res.isSuccessful && res.body()?.data != null) {
-                    _backtestResult.value = res.body()!!.data
-                }
-            } catch (_: Exception) {}
-        }
-    }
 
     fun loadTransactions() {
         viewModelScope.launch {

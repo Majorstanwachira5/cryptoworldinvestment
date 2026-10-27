@@ -33,7 +33,7 @@ fun TradingScreen(
             .background(DarkBackground)
             .padding(16.dp)
     ) {
-        Text("Spot Paper Trading — $symbol", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text("Spot Trading — $symbol", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -128,7 +128,7 @@ fun TradingScreen(
                         .fillMaxWidth()
                         .height(48.dp)
                 ) {
-                    Text("$selectedSide $symbol (Paper)", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("$selectedSide $symbol", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
             }
         }

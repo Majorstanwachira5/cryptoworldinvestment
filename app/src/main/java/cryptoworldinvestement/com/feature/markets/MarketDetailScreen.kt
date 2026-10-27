@@ -132,7 +132,7 @@ fun MarketDetailScreen(
                 .fillMaxWidth()
                 .height(50.dp)
         ) {
-            Text("Trade ${pair.symbol} (Paper)", color = DarkBackground, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text("Trade ${pair.symbol}", color = DarkBackground, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
     }
 }
