@@ -1,0 +1,12 @@
+{
+  "name": "cryptohub-admin-dashboard",
+  "version": "1.0.0",
+  "description": "CryptoHub AI Administrator Web Dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
