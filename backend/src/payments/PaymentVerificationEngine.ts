@@ -60,21 +60,11 @@ export class PaymentVerificationEngine {
     let record = db.prepare('SELECT * FROM deposit_verifications WHERE tx_hash = ?').get(notification.txHash) as any;
 
     if (!record) {
-      record = db.prepare("SELECT * FROM deposit_verifications WHERE destination_address = ? AND status = 'PAYMENT_REQUESTED' ORDER BY created_at DESC").get(notification.destinationAddress) as any;
+      record = db.prepare("SELECT * FROM deposit_verifications WHERE destination_address = ? AND status IN ('PAYMENT_REQUESTED', 'CONFIRMATION_PENDING') ORDER BY created_at DESC").get(notification.destinationAddress) as any;
     }
 
     if (!record) {
-      const user = db.prepare('SELECT id FROM users WHERE id = ?').get(notification.destinationAddress) as any;
-      const targetUserId = user ? user.id : 'UNKNOWN_USER';
-
-      const depositId = uuidv4();
-      const prId = `PR_WEBHOOK_${uuidv4().substring(0, 8)}`;
-      db.prepare(`
-        INSERT INTO deposit_verifications (id, user_id, payment_request_id, network, token_contract, destination_address, amount_usdt, tx_hash, confirmations, required_confirmations, status)
-        VALUES (?, ?, ?, 'TRC20', ?, ?, ?, ?, ?, ?, 'TRANSACTION_DETECTED')
-      `).run(depositId, targetUserId, prId, config.usdtTrc20ContractAddress, notification.destinationAddress, notification.amountUsdt, notification.txHash, notification.confirmations, config.requiredDepositConfirmations);
-
-      record = db.prepare('SELECT * FROM deposit_verifications WHERE id = ?').get(depositId) as any;
+      throw new Error(`Deposit notification for unknown destination address: ${notification.destinationAddress}`);
     }
 
     let nextStatus = 'CONFIRMATION_PENDING';

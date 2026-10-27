@@ -4,8 +4,6 @@ import jwt from 'jsonwebtoken';
 import { config } from './config';
 import { initDatabase, db } from './database';
 import { AuthService } from './auth/AuthService';
-import { PaperTradingEngine } from './trading/PaperTradingEngine';
-import { BacktestingEngine } from './trading/BacktestingEngine';
 import { WalletService } from './wallet/WalletService';
 import { ReferralRewardsEngine } from './rewards/ReferralRewardsEngine';
 import { P2PService } from './p2p/P2PService';
@@ -164,42 +162,6 @@ app.get('/api/v1/markets/candles', (req: Request, res: Response) => {
   }
 });
 
-// --- PAPER TRADING & BACKTESTING ROUTES ---
-app.post('/api/v1/paper-trading/orders', authenticateToken, (req: AuthRequest, res: Response) => {
-  try {
-    const { symbol, type, side, amount, price } = req.body;
-    const order = PaperTradingEngine.createOrder(req.userId!, symbol, type, side, amount, price);
-    res.json({ success: true, data: order });
-  } catch (err: any) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-});
-
-app.get('/api/v1/paper-trading/orders', authenticateToken, (req: AuthRequest, res: Response) => {
-  try {
-    const symbol = req.query.symbol as string | undefined;
-    const orders = PaperTradingEngine.getOrders(req.userId!, symbol);
-    res.json({ success: true, data: orders });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-app.post('/api/v1/backtesting/run', (req: Request, res: Response) => {
-  try {
-    const { strategy, symbol, initialCapital, timeframe, days } = req.body;
-    const result = BacktestingEngine.runBacktest({
-      strategy: strategy || 'SMA_CROSS',
-      symbol: symbol || 'BTC/USDT',
-      initialCapital: initialCapital || 10000,
-      timeframe: timeframe || '1h',
-      days: days || 30
-    });
-    res.json({ success: true, data: result });
-  } catch (err: any) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-});
 
 // --- WALLET & LEDGER ROUTES ---
 app.get('/api/v1/wallet/summary', authenticateToken, (req: AuthRequest, res: Response) => {

@@ -6,11 +6,11 @@ import { randomUUID as uuidv4 } from 'crypto';
 export class WalletService {
 
   static getWalletSummary(userId: string) {
-    let wallet = db.prepare('SELECT id, total_balance_micro, reserved_balance_micro FROM wallets WHERE user_id = ? AND asset = "USDT"').get(userId) as any;
+    let wallet = db.prepare("SELECT id, total_balance_micro, reserved_balance_micro FROM wallets WHERE user_id = ? AND asset = 'USDT'").get(userId) as any;
 
     if (!wallet) {
       const walletId = uuidv4();
-      db.prepare('INSERT INTO wallets (id, user_id, asset, total_balance_micro, reserved_balance_micro) VALUES (?, ?, "USDT", 0, 0)').run(walletId, userId);
+      db.prepare("INSERT INTO wallets (id, user_id, asset, total_balance_micro, reserved_balance_micro) VALUES (?, ?, 'USDT', 0, 0)").run(walletId, userId);
       wallet = { id: walletId, total_balance_micro: 0, reserved_balance_micro: 0 };
     }
 
@@ -27,7 +27,7 @@ export class WalletService {
   }
 
   static getTransactions(userId: string) {
-    const wallet = db.prepare('SELECT id FROM wallets WHERE user_id = ? AND asset = "USDT"').get(userId) as { id: string } | undefined;
+    const wallet = db.prepare("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'").get(userId) as { id: string } | undefined;
     if (!wallet) return [];
 
     const entries = db.prepare(`
@@ -64,7 +64,7 @@ export class WalletService {
       throw new Error(`Minimum withdrawal amount is ${config.minWithdrawalUsdt} USDT.`);
     }
 
-    const wallet = db.prepare('SELECT id, total_balance_micro, reserved_balance_micro FROM wallets WHERE user_id = ? AND asset = "USDT"').get(userId) as any;
+    const wallet = db.prepare("SELECT id, total_balance_micro, reserved_balance_micro FROM wallets WHERE user_id = ? AND asset = 'USDT'").get(userId) as any;
     if (!wallet) throw new Error('Wallet not found.');
 
     const availableMicro = wallet.total_balance_micro - wallet.reserved_balance_micro;
@@ -109,7 +109,7 @@ export class WalletService {
       return { success: true, message: 'Withdrawal already executed.', status: 'CONFIRMED' };
     }
 
-    const wallet = db.prepare('SELECT id FROM wallets WHERE user_id = ? AND asset = "USDT"').get(req.user_id) as any;
+    const wallet = db.prepare("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'").get(req.user_id) as any;
     if (!wallet) throw new Error('User wallet not found.');
 
     const amountMicro = Math.round(req.amount_usdt * 1_000_000);

@@ -48,7 +48,7 @@ export class WednesdayBonusEngine {
       throw new Error('Wednesday promotional campaign budget limit reached.');
     }
 
-    const userWallet = db.prepare('SELECT id FROM wallets WHERE user_id = ? AND asset = "USDT"').get(userId) as { id: string } | undefined;
+    const userWallet = db.prepare("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'").get(userId) as { id: string } | undefined;
     if (!userWallet) {
       throw new Error('User USDT wallet not found.');
     }

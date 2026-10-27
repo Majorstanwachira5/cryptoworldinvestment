@@ -27,7 +27,7 @@ export class ReferralRewardsEngine {
       const rewardId = uuidv4();
       const amountMicro = Math.round(rewardAmountUsdt * 1_000_000);
 
-      const referrerWallet = db.prepare('SELECT id FROM wallets WHERE user_id = ? AND asset = "USDT"').get(rel.referrer_id) as { id: string } | undefined;
+      const referrerWallet = db.prepare("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'").get(rel.referrer_id) as { id: string } | undefined;
       if (!referrerWallet) continue;
 
       const systemWallet = LedgerService.getOrCreateSystemWallet();
