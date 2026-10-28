@@ -22,6 +22,7 @@ const app = express();
 
 const allowedOrigins = [
   'https://cryptoworldinvestment.majorstan20.workers.dev',
+  'https://cryptoworldinvestment.vercel.app',
   'http://localhost:3600',
   'http://localhost:3000',
   'http://localhost:5173',
@@ -34,19 +35,26 @@ if (process.env.CORS_ORIGINS) {
   });
 }
 
-app.use(cors({
+const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+    const isAllowed = allowedOrigins.includes(origin) ||
+                      origin.endsWith('.workers.dev') ||
+                      origin.endsWith('.vercel.app') ||
+                      process.env.NODE_ENV !== 'production';
+    if (isAllowed) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(null, false);
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 interface AuthRequest extends Request {
