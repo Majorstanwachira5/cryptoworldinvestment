@@ -271,6 +271,28 @@ export async function initDatabase() {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id)
       );
+
+      CREATE TABLE IF NOT EXISTS paylor_payments (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        reference TEXT UNIQUE NOT NULL,
+        rail TEXT NOT NULL,
+        amount DOUBLE PRECISION NOT NULL,
+        currency TEXT NOT NULL DEFAULT 'KES',
+        status TEXT NOT NULL DEFAULT 'PENDING',
+        provider_response TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS paylor_webhook_events (
+        event_id TEXT PRIMARY KEY,
+        reference TEXT NOT NULL,
+        status TEXT NOT NULL,
+        raw_payload TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
     `);
   } finally {
     client.release();

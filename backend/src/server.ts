@@ -10,6 +10,7 @@ import { P2PService } from './p2p/P2PService';
 import { AdminService } from './admin/AdminService';
 import { UserLevelsEngine } from './levels/UserLevelsEngine';
 import { PaymentVerificationEngine } from './payments/PaymentVerificationEngine';
+import { PaylorService } from './payments/PaylorService';
 import { WednesdayBonusEngine } from './promotions/WednesdayBonusEngine';
 
 initDatabase().catch(err => {
@@ -231,6 +232,32 @@ app.get('/api/v1/deposits/history', authenticateToken, async (req: AuthRequest, 
     res.json({ success: true, data: history });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// --- PAYLOR PAYMENT ROUTES ---
+app.post('/api/v1/payments/paylor/collect', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { rail, msisdn, amount, currency } = req.body;
+    if (!msisdn || !amount) {
+      return res.status(400).json({ success: false, message: 'MSISDN and amount are required' });
+    }
+    const result = await PaylorService.initiateCollection(req.userId!, rail, msisdn, amount, currency);
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/v1/payments/paylor/webhook', async (req: Request, res: Response) => {
+  try {
+    const signature = req.headers['x-paylor-signature'] as string || req.headers['signature'] as string || '';
+    const rawBody = JSON.stringify(req.body);
+    const result = await PaylorService.handleWebhookEvent(req.body, rawBody, signature);
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    const status = err.message.includes('signature') ? 401 : 400;
+    res.status(status).json({ success: false, message: err.message });
   }
 });
 

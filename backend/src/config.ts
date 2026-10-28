@@ -10,6 +10,12 @@ export const config = {
   supabaseKey: process.env.SUPABASE_PUBLISHABLE_KEY || '',
   adminPort: parseInt(process.env.ADMIN_PORT || '3600', 10),
 
+  // Paylor Payments Integration
+  paylorBaseUrl: process.env.PAYLOR_BASE_URL || 'https://api.paylorke.com/api/v1',
+  paylorApiKey: process.env.PAYLOR_API_KEY || '',
+  paylorWebhookSecret: process.env.PAYLOR_WEBHOOK_SECRET || '',
+  paylorChannelId: process.env.PAYLOR_CHANNEL_ID || 'PAYL-EFSJUF',
+
   // Referral Rewards
   referralLevel1RewardUsdt: 100, // $100 for Level 1 qualifying referral
   referralLevel2RewardUsdt: 10,  // $10 for Level 2 qualifying referral
