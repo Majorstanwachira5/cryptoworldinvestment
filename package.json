@@ -1,0 +1,10 @@
+{
+  "name": "cryptohub-ai-project",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CryptoHub AI Real-Money Application Engine & Admin Dashboard",
+  "scripts": {
+    "build": "cd backend && npm run build",
+    "test": "cd backend && npm test"
+  }
+}

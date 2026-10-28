@@ -22,8 +22,16 @@ export class WednesdayBonusEngine {
     return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
   }
 
-  static async processWednesdayBonus(userId: string, weekCodeInput?: string): Promise<BonusResult> {
-    const weekCode = weekCodeInput || this.getIsoWeekCode();
+  static async processWednesdayBonus(userId: string, weekCodeInput?: string, forceDayCheck: boolean = true): Promise<BonusResult> {
+    const currentDate = new Date();
+    const dayOfWeek = currentDate.getUTCDay(); // 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
+
+    // Rule: Must be Wednesday (day 3) unless explicitly in test mode with weekCodeInput supplied
+    if (forceDayCheck && !weekCodeInput && dayOfWeek !== 3) {
+      throw new Error('Wednesday promotional bonus is only available on Wednesdays (UTC).');
+    }
+
+    const weekCode = weekCodeInput || this.getIsoWeekCode(currentDate);
     const eventKey = `WED_BONUS_${weekCode}_${userId}`;
 
     const existing = await db.get('SELECT id, status, amount_usdt FROM wednesday_bonus_events WHERE event_key = ?', [eventKey]) as any;

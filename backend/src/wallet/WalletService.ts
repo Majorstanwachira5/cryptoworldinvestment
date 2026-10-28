@@ -60,8 +60,12 @@ export class WalletService {
   }
 
   static async requestWithdrawal(userId: string, address: string, amountUsdt: number) {
-    if (amountUsdt < config.minWithdrawalUsdt) {
-      throw new Error(`Minimum withdrawal amount is ${config.minWithdrawalUsdt} USDT.`);
+    if (!address || typeof address !== 'string' || address.trim().length === 0) {
+      throw new Error('Destination TRC20 address is required.');
+    }
+
+    if (isNaN(amountUsdt) || amountUsdt < config.minWithdrawalUsdt) {
+      throw new Error(`Minimum withdrawal amount is ${config.minWithdrawalUsdt.toFixed(2)} USDT.`);
     }
 
     const wallet = await db.get("SELECT id, total_balance_micro, reserved_balance_micro FROM wallets WHERE user_id = ? AND asset = 'USDT'", [userId]) as any;
@@ -77,9 +81,22 @@ export class WalletService {
     const withdrawalId = uuidv4();
     const feeUsdt = config.withdrawalFeeUsdt;
     const netReceiveUsdt = Math.max(0, amountUsdt - feeUsdt);
+    const withdrawalRef = `WITHDRAWAL_REQ_${withdrawalId}`;
 
+    const systemWallet = await LedgerService.getOrCreateSystemWallet();
+
+    // Atomically create withdrawal request AND post ledger debit transaction in a single DB transaction
     await db.transaction(async (client) => {
-      await LedgerService.reserveAmount(wallet.id, amountMicro);
+      // Post ledger transaction: DEBIT user wallet, CREDIT system treasury
+      const ledgerTxId = await LedgerService.postTransaction(
+        withdrawalRef,
+        'WITHDRAWAL',
+        `TRC20 USDT Withdrawal Request to ${address} ($${amountUsdt} USDT)`,
+        [
+          { walletId: wallet.id, type: 'DEBIT', amountMicro },
+          { walletId: systemWallet.id, type: 'CREDIT', amountMicro }
+        ]
+      );
 
       await db.run(`
         INSERT INTO withdrawal_requests (id, user_id, destination_address, network, amount_usdt, fee_usdt, net_receive_usdt, status, risk_score)
@@ -104,31 +121,12 @@ export class WalletService {
     if (!req) throw new Error('Withdrawal request not found.');
 
     if (req.status === 'CONFIRMED') {
-      return { success: true, message: 'Withdrawal already executed.', status: 'CONFIRMED' };
+      return { success: true, message: 'Withdrawal already executed.', status: 'CONFIRMED', txHash: req.tx_hash };
     }
 
-    const wallet = await db.get("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'", [req.user_id]) as any;
-    if (!wallet) throw new Error('User wallet not found.');
-
-    const amountMicro = Math.round(Number(req.amount_usdt) * 1_000_000);
-    const withdrawalRef = `WITHDRAWAL_${req.id}`;
     const hash = txHash || `0x${uuidv4().replace(/-/g, '')}`;
 
-    const systemWallet = await LedgerService.getOrCreateSystemWallet();
-
     await db.transaction(async (client) => {
-      await LedgerService.postTransaction(
-        withdrawalRef,
-        'WITHDRAWAL',
-        `TRC20 USDT Withdrawal to ${req.destination_address} (Tx: ${hash.substring(0, 8)}...)`,
-        [
-          { walletId: wallet.id, type: 'DEBIT', amountMicro },
-          { walletId: systemWallet.id, type: 'CREDIT', amountMicro }
-        ]
-      );
-
-      await LedgerService.releaseReservation(wallet.id, amountMicro);
-
       await db.run(`
         UPDATE withdrawal_requests
         SET status = 'CONFIRMED', tx_hash = ?, updated_at = ?

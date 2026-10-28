@@ -6,6 +6,7 @@ import { initDatabase, db } from './database';
 import { AuthService } from './auth/AuthService';
 import { WalletService } from './wallet/WalletService';
 import { ReferralRewardsEngine } from './rewards/ReferralRewardsEngine';
+import { AutoTradeEngine } from './rewards/AutoTradeEngine';
 import { P2PService } from './p2p/P2PService';
 import { AdminService } from './admin/AdminService';
 import { UserLevelsEngine } from './levels/UserLevelsEngine';
@@ -69,11 +70,6 @@ app.post('/api/v1/auth/register', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
     const result = await AuthService.register(email, password, fullName, referralCode);
-
-    if (referralCode) {
-      await ReferralRewardsEngine.processReferralReward(result.userId);
-    }
-
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
@@ -111,6 +107,7 @@ app.get('/api/v1/users/me', authenticateToken, async (req: AuthRequest, res: Res
         mfaEnabled: Boolean(user.mfa_enabled),
         userLevel: levelInfo.level,
         qualifyingVolumeUsdt: levelInfo.qualifyingVolumeUsdt,
+        successfulReferralsCount: levelInfo.successfulReferralsCount,
         createdAt: user.created_at
       }
     });
@@ -168,7 +165,6 @@ app.get('/api/v1/markets/candles', async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
 
 // --- WALLET & LEDGER ROUTES ---
 app.get('/api/v1/wallet/summary', authenticateToken, async (req: AuthRequest, res: Response) => {
@@ -235,6 +231,26 @@ app.get('/api/v1/deposits/history', authenticateToken, async (req: AuthRequest, 
   }
 });
 
+// --- AUTO-TRADE ROUTES ---
+app.post('/api/v1/autotrade/run', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { runDate } = req.body;
+    const result = await AutoTradeEngine.runDailyBatch(runDate);
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.get('/api/v1/autotrade/history', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const history = await AutoTradeEngine.getUserAutoTradeHistory(req.userId!);
+    res.json({ success: true, data: history });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // --- PAYLOR PAYMENT ROUTES ---
 app.post('/api/v1/payments/paylor/collect', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
@@ -284,7 +300,8 @@ app.get('/api/v1/withdrawals/history', authenticateToken, async (req: AuthReques
 // --- WEDNESDAY PROMOTIONAL BONUS ROUTES ---
 app.post('/api/v1/promotions/wednesday/claim', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const result = await WednesdayBonusEngine.processWednesdayBonus(req.userId!);
+    const { weekCode } = req.body || {};
+    const result = await WednesdayBonusEngine.processWednesdayBonus(req.userId!, weekCode);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });

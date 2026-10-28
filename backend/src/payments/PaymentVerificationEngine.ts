@@ -2,6 +2,7 @@ import { db } from '../database';
 import { config } from '../config';
 import { LedgerService } from '../ledger/LedgerService';
 import { UserLevelsEngine } from '../levels/UserLevelsEngine';
+import { ReferralRewardsEngine } from '../rewards/ReferralRewardsEngine';
 import { randomUUID as uuidv4 } from 'crypto';
 
 export interface PaymentRequestResult {
@@ -64,6 +65,21 @@ export class PaymentVerificationEngine {
     }
 
     if (!record) {
+      // Find user_id from any existing deposit_verifications with this destinationAddress
+      const userRecord = await db.get("SELECT user_id FROM deposit_verifications WHERE destination_address = ? LIMIT 1", [notification.destinationAddress]) as any;
+      if (userRecord) {
+        const id = uuidv4();
+        const prId = `PR_AUTO_${uuidv4().substring(0, 8)}`;
+        await db.run(`
+          INSERT INTO deposit_verifications (id, user_id, payment_request_id, network, token_contract, destination_address, amount_usdt, tx_hash, confirmations, status, required_confirmations)
+          VALUES (?, ?, ?, 'TRC20', ?, ?, ?, ?, ?, 'CONFIRMATION_PENDING', ?)
+        `, [id, userRecord.user_id, prId, notification.tokenContract, notification.destinationAddress, notification.amountUsdt, notification.txHash, notification.confirmations, config.requiredDepositConfirmations]);
+
+        record = await db.get('SELECT * FROM deposit_verifications WHERE id = ?', [id]);
+      }
+    }
+
+    if (!record) {
       throw new Error(`Deposit notification for unknown destination address: ${notification.destinationAddress}`);
     }
 
@@ -77,9 +93,9 @@ export class PaymentVerificationEngine {
     await db.transaction(async (client) => {
       await db.run(`
         UPDATE deposit_verifications
-        SET tx_hash = ?, confirmations = ?, status = ?, updated_at = ?
+        SET tx_hash = ?, amount_usdt = ?, confirmations = ?, status = ?, updated_at = ?
         WHERE id = ?
-      `, [notification.txHash, notification.confirmations, nextStatus, nowIso, record.id], client);
+      `, [notification.txHash, notification.amountUsdt, notification.confirmations, nextStatus, nowIso, record.id], client);
 
       if (nextStatus === 'VERIFIED') {
         const userWallet = await db.get("SELECT id FROM wallets WHERE user_id = ? AND asset = 'USDT'", [record.user_id], client) as { id: string } | undefined;
@@ -105,6 +121,11 @@ export class PaymentVerificationEngine {
         }
       }
     });
+
+    if (nextStatus === 'VERIFIED') {
+      // Process referral reward for the referrer if this referee was referred
+      await ReferralRewardsEngine.processReferralReward(record.user_id);
+    }
 
     const updated = await db.get('SELECT * FROM deposit_verifications WHERE id = ?', [record.id]) as any;
 

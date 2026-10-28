@@ -1,0 +1,5 @@
+name = "cryptohub-ai"
+compatibility_date = "2026-10-28"
+
+[assets]
+directory = "./admin-web/public"
