@@ -1,5 +1,6 @@
 package cryptoworldinvestement.com.core.network
 
+import cryptoworldinvestement.com.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -8,8 +9,8 @@ import java.util.concurrent.TimeUnit
 
 object NetworkClient {
 
-    // Default base URL for Android Emulator pointing to local Node.js backend
-    private const val DEFAULT_BASE_URL = "http://10.0.2.2:4000/"
+    // Base URL sourced from build configuration (debug points to local 10.0.2.2:4000, release points to production Vercel)
+    private val DEFAULT_BASE_URL = BuildConfig.API_BASE_URL
 
     fun createApiService(tokenProvider: suspend () -> String?, baseUrl: String = DEFAULT_BASE_URL): CryptoHubApiService {
         val loggingInterceptor = HttpLoggingInterceptor().apply {

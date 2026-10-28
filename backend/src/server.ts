@@ -20,7 +20,33 @@ initDatabase().catch(err => {
 
 const app = express();
 
-app.use(cors({ origin: '*' }));
+const allowedOrigins = [
+  'https://cryptoworldinvestment.majorstan20.workers.dev',
+  'http://localhost:3600',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://10.0.2.2:4000'
+];
+
+if (process.env.CORS_ORIGINS) {
+  process.env.CORS_ORIGINS.split(',').forEach(origin => {
+    allowedOrigins.push(origin.trim());
+  });
+}
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 app.use(express.json());
 
 interface AuthRequest extends Request {

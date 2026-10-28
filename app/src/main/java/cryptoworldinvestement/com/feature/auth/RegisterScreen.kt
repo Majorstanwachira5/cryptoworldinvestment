@@ -1,5 +1,6 @@
 package cryptoworldinvestement.com.feature.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -7,10 +8,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cryptoworldinvestement.com.R
 import cryptoworldinvestement.com.core.designsystem.*
 
 @Composable
@@ -46,17 +49,25 @@ fun RegisterScreen(
                 .padding(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_cwi_logo),
+                contentDescription = "CWI Logo",
+                modifier = Modifier
+                    .size(72.dp)
+                    .padding(bottom = 8.dp)
+            )
+
             Text(
                 text = "CryptoHub AI",
                 color = AccentGold,
-                fontSize = 28.sp,
+                fontSize = 26.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Create Account & Get $100 Referral Eligibility",
+                text = "Create CWI Account & Get $100 Referral Eligibility",
                 color = TextSecondary,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
             )
 
             OutlinedTextField(

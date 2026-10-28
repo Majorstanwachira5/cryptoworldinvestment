@@ -1,0 +1,45 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="128dp"
+    android:height="128dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+
+    <!-- Outer Gold Diamond/Hexagon Background -->
+    <path
+        android:fillColor="#13171F"
+        android:strokeColor="#F0B90B"
+        android:strokeWidth="3.5"
+        android:pathData="M64,6 L118,34 L118,94 L64,122 L10,94 L10,34 Z" />
+
+    <!-- Inner Shield Fill Accent -->
+    <path
+        android:fillColor="#1C222D"
+        android:strokeColor="#0ECB81"
+        android:strokeWidth="1.5"
+        android:pathData="M64,14 L110,38 L110,90 L64,114 L18,90 L18,38 Z" />
+
+    <!-- Top Crypto Tech Accent Nodes -->
+    <path
+        android:fillColor="#F0B90B"
+        android:pathData="M64,22 L68,26 L64,30 L60,26 Z" />
+
+    <!-- Letter 'C' -->
+    <path
+        android:fillColor="#F0B90B"
+        android:pathData="M48,50 C44,50 40,54 40,64 C40,74 44,78 48,78 C52,78 55,75 56,71 L49,71 C48.5,72.5 47.5,73.5 46.5,73.5 C44.5,73.5 43.5,70 43.5,64 C43.5,58 44.5,54.5 46.5,54.5 C47.5,54.5 48.5,55.5 49,57 L56,57 C55,53 52,50 48,50 Z" />
+
+    <!-- Letter 'W' -->
+    <path
+        android:fillColor="#EAECEF"
+        android:pathData="M59,50 L63.5,78 L68,78 L71.5,61 L75,78 L79.5,78 L84,50 L79.5,50 L77,69 L73.5,50 L69.5,50 L66,69 L63.5,50 Z" />
+
+    <!-- Letter 'I' -->
+    <path
+        android:fillColor="#F0B90B"
+        android:pathData="M87,50 L95,50 L95,54.5 L92.5,54.5 L92.5,73.5 L95,73.5 L95,78 L87,78 L87,73.5 L89.5,73.5 L89.5,54.5 L87,54.5 Z" />
+
+    <!-- Bottom Sparkle Node -->
+    <path
+        android:fillColor="#0ECB81"
+        android:pathData="M64,98 L67,101 L64,104 L61,101 Z" />
+</vector>

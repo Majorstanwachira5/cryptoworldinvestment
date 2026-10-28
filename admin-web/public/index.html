@@ -287,7 +287,10 @@
   </div>
 
   <script>
-    const API_BASE = 'http://localhost:4000/api/v1';
+    const API_BASE = window.ENV?.API_BASE ||
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:4000/api/v1'
+        : 'https://cryptoworldinvestment.vercel.app/api/v1');
     let adminToken = '';
 
     async function handleAdminLogin() {
