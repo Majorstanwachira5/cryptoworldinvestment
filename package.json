@@ -2,10 +2,20 @@
   "name": "cryptohub-ai-project",
   "version": "1.0.0",
   "private": true,
-  "description": "CryptoHub AI Real-Money Application Engine & Admin Dashboard",
+  "description": "CryptoHub AI Real-Money Trading Suite — Frontend Client, Admin, and Backend",
+  "workspaces": [
+    "cryptohub",
+    "admin-web",
+    "admin",
+    "backend"
+  ],
   "scripts": {
-    "build": "cd backend && npm install && npm run build",
-    "test": "cd backend && npm install && npm test"
+    "build:cryptohub": "npm --prefix cryptohub run build",
+    "build:admin": "npm --prefix admin run build",
+    "build:backend": "npm --prefix backend run build",
+    "build": "npm --prefix cryptohub run build",
+    "start": "npm --prefix cryptohub run start",
+    "test": "npm --prefix backend run test"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

@@ -1,0 +1,39 @@
+services:
+  cryptohub-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+    container_name: cryptohub_app
+    ports:
+      - '4000:4000'
+    # Runtime configuration, including the Supabase project ref and secrets.
+    # Next.js does not bake server-side env into the standalone output, so the
+    # container has to be handed these explicitly.
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - HOSTNAME=0.0.0.0
+      # Durable state. Must match the directory prepared in the Dockerfile and
+      # be writable by the unprivileged runtime user.
+      - DATA_DIR=/app/data
+    volumes:
+      # Accounts, balances, trades, ledger, and referrals live here. Without
+      # this volume every restart would delete them along with the container.
+      - cryptohub-data:/app/data
+    restart: unless-stopped
+    networks:
+      - cryptohub-network
+
+volumes:
+  cryptohub-data:
+
+networks:
+  cryptohub-network:
+    driver: bridge

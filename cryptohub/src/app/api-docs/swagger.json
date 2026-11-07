@@ -1,0 +1,218 @@
+﻿{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "CryptoHub Institutional Trading Platform API",
+    "version": "1.0.0",
+    "description": "End-to-End API Documentation for CryptoHub Trading Platform, Supabase Authentication, Double-Entry Ledger, Risk Engine, and Quant Predictions."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current Host Server"
+    }
+  ],
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "summary": "Authenticate or Register Trader Session",
+        "description": "Provides session tokens for trader authorization",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "example": "trader@cryptohub.io" },
+                  "password": { "type": "string", "example": "password123" },
+                  "action": { "type": "string", "enum": ["login", "signup"], "example": "login" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "token": { "type": "string" },
+                    "user": { "type": "object" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ledger/balance": {
+      "get": {
+        "summary": "Retrieve Account Balance & Margin Metrics",
+        "parameters": [
+          {
+            "name": "account_type",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["DEMO", "REAL"], "default": "DEMO" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current Balance, Equity, and Free Margin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "balance": { "type": "object" },
+                    "user": { "type": "object" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ledger/deposit": {
+      "post": {
+        "summary": "Execute Capital Deposit",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": { "type": "number", "example": 5000 },
+                  "method": { "type": "string", "example": "USDT_TRC20" },
+                  "txHash": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deposit credited successfully"
+          }
+        }
+      }
+    },
+    "/api/ledger/transactions": {
+      "get": {
+        "summary": "Fetch Double-Entry Audit Ledger Transactions",
+        "parameters": [
+          {
+            "name": "account_type",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "enum": ["DEMO", "REAL"], "default": "DEMO" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of ledger transactions"
+          }
+        }
+      }
+    },
+    "/api/trade/positions": {
+      "get": {
+        "summary": "Fetch Open & Closed Positions",
+        "parameters": [
+          {
+            "name": "account_type",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["DEMO", "REAL"], "default": "DEMO" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of positions and real-time PnL"
+          }
+        }
+      }
+    },
+    "/api/trade/execute": {
+      "post": {
+        "summary": "Place Institutional Order / Open Position",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "accountType": { "type": "string", "enum": ["DEMO", "REAL"] },
+                  "symbol": { "type": "string", "example": "BTCUSDT" },
+                  "assetClass": { "type": "string", "enum": ["CRYPTO", "FOREX"] },
+                  "direction": { "type": "string", "enum": ["LONG", "SHORT"] },
+                  "orderType": { "type": "string", "enum": ["MARKET", "LIMIT"] },
+                  "currentPrice": { "type": "number" },
+                  "size": { "type": "number" },
+                  "leverage": { "type": "number", "default": 10 },
+                  "stopLoss": { "type": "number" },
+                  "takeProfit": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trade executed successfully"
+          }
+        }
+      }
+    },
+    "/api/trade/close": {
+      "post": {
+        "summary": "Close Active Trade Position",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tradeId": { "type": "string" },
+                  "accountType": { "type": "string", "enum": ["DEMO", "REAL"] },
+                  "exitPrice": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trade closed and settled into ledger"
+          }
+        }
+      }
+    },
+    "/api/predict": {
+      "get": {
+        "summary": "Retrieve Quantitative Market Confluence & Signal Prediction",
+        "parameters": [
+          { "name": "symbol", "in": "query", "required": true, "schema": { "type": "string", "default": "BTCUSDT" } },
+          { "name": "timeframe", "in": "query", "required": false, "schema": { "type": "string", "default": "1H" } },
+          { "name": "account_type", "in": "query", "required": false, "schema": { "type": "string", "default": "DEMO" } },
+          { "name": "current_price", "in": "query", "required": false, "schema": { "type": "number" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Quantitative direction, confidence, win rate, SL, and TP"
+          }
+        }
+      }
+    }
+  }
+}
