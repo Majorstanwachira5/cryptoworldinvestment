@@ -23,7 +23,6 @@ import { PositionsTable } from "@/components/PositionsTable";
 import { DepositModal } from "@/components/DepositModal";
 import { LedgerModal } from "@/components/LedgerModal";
 import { AuthModal } from "@/components/AuthModal";
-import { RiskQuizModal } from "@/components/RiskQuizModal";
 import { DEFAULT_ASSETS } from "@/lib/market/assets";
 import {
   MarketAsset,
@@ -84,7 +83,6 @@ function TradingPlatformContent() {
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [depositModalTab, setDepositModalTab] = useState<"DEPOSIT" | "WITHDRAW" | "HISTORY">("DEPOSIT");
   const [isLedgerOpen, setIsLedgerOpen] = useState(false);
-  const [isRiskQuizOpen, setIsRiskQuizOpen] = useState(false);
 
   const handleOpenDepositModal = (tab: "DEPOSIT" | "WITHDRAW" | "HISTORY" = "DEPOSIT") => {
     setDepositModalTab(tab);
@@ -561,7 +559,6 @@ function TradingPlatformContent() {
     showToast(
       "info",
       "REAL Account Active",
-      "Trading with Live Capital under the strict 60/40 risk model."
       "Trading with Live Capital under quantitative risk governance."
     );
   };
@@ -742,7 +739,6 @@ function TradingPlatformContent() {
             onSwitchAccount={handleSwitchAccount}
             onOpenDeposit={handleOpenDepositModal}
             onOpenLedger={() => setIsLedgerOpen(true)}
-            onOpenRiskQuiz={() => setIsRiskQuizOpen(true)}
             onGoHome={() => setView("LANDING")}
             activeSymbol={selectedAsset.symbol}
             currency={currency}
@@ -758,7 +754,6 @@ function TradingPlatformContent() {
           />
 
           {section === "HOME" && (
-            <div className="flex-1 p-3 lg:p-4 max-w-[1920px] w-full mx-auto">
             <div className="flex-1 p-2 sm:p-3 lg:p-4 max-w-[1920px] w-full mx-auto">
               <HomeDashboard
                 user={user}
@@ -817,7 +812,6 @@ function TradingPlatformContent() {
               </div>
 
               {/* Main Trading Workspace */}
-              <div className="flex-1 p-3 lg:p-4 space-y-4 max-w-[1920px] w-full mx-auto">
               <div className="flex-1 p-2 sm:p-3 lg:p-4 space-y-3 max-w-[1920px] w-full mx-auto">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                   {/* Chart & Prediction — hidden on mobile if not on chart/signals tab */}
@@ -921,7 +915,6 @@ asset={selectedAsset}
 
 
           {section === "REFERRAL" && (
-            <div className="flex-1 p-3 lg:p-6 max-w-7xl w-full mx-auto">
             <div className="flex-1 p-2 sm:p-3 lg:p-4 max-w-[1920px] w-full mx-auto">
               <ReferralPanel
                 stats={referrals}
@@ -941,7 +934,6 @@ asset={selectedAsset}
           )}
 
           {section === "PROFILE" && (
-            <div className="flex-1 p-3 lg:p-6 max-w-7xl w-full mx-auto">
             <div className="flex-1 p-2 sm:p-3 lg:p-4 max-w-[1920px] w-full mx-auto">
               <ProfilePanel
                 profile={profile}
@@ -957,13 +949,11 @@ asset={selectedAsset}
                   setCurrency((c) => (c === "KES" ? "USD" : "KES"))
                 }
                 onLogout={handleLogout}
-                onOpenRiskQuiz={() => setIsRiskQuizOpen(true)}
               />
             </div>
           )}
 
           {section === "MIKE_AI" && (
-            <div className="flex-1 p-2 sm:p-4 max-w-[1920px] w-full mx-auto">
             <div className="flex-1 p-2 sm:p-3 lg:p-4 max-w-[1920px] w-full mx-auto">
               <MikeTradesChat />
             </div>
@@ -1016,20 +1006,6 @@ asset={selectedAsset}
               accountTypeRef.current = chosenType;
               setSection("HOME");
               setView("TERMINAL");
-            }}
-          />
-
-          <RiskQuizModal
-            isOpen={isRiskQuizOpen}
-            onClose={() => setIsRiskQuizOpen(false)}
-            onSuccess={() => {
-              setIsRiskQuizOpen(false);
-              fetchProfile();
-              showToast(
-                "success",
-                "Risk Model Certified",
-                "Your understanding of the 60/40 risk framework is verified."
-              );
             }}
           />
         </main>
