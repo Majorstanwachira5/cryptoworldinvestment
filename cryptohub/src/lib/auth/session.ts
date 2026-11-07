@@ -86,7 +86,16 @@ export async function registerAccount(input: {
     body: JSON.stringify(input),
   });
 
-  const data = await res.json();
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {
+    const errorText = await res.text().catch(() => "");
+    throw new Error(
+      errorText || (res.status >= 500 ? "Server error during registration. Please try again." : "Registration failed.")
+    );
+  }
+
   if (!res.ok || !data.success) {
     throw new Error(data?.error || "Registration failed.");
   }
@@ -105,7 +114,16 @@ export async function loginAccount(input: {
     body: JSON.stringify(input),
   });
 
-  const data = await res.json();
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {
+    const errorText = await res.text().catch(() => "");
+    throw new Error(
+      errorText || (res.status >= 500 ? "Server error during sign in. Please try again." : "Sign in failed.")
+    );
+  }
+
   if (!res.ok || !data.success) {
     throw new Error(data?.error || "Sign in failed.");
   }

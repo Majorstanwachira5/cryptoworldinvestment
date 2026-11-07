@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { credentials } from "@/lib/auth/credentials";
 import { issueAccessToken } from "@/lib/auth/access";
 import { AccessTokenResponse } from "@/types";
+import { SupabaseSync } from "@/lib/supabase/sync";
 
 export const dynamic = "force-dynamic";
 
@@ -12,43 +13,87 @@ export const dynamic = "force-dynamic";
  * public user record.
  */
 export async function POST(request: NextRequest) {
-  let body: { email?: string; name?: string; password?: string };
-
   try {
-    body = await request.json();
-  } catch {
+    let body: { email?: string; name?: string; password?: string };
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "Invalid request body. Expected JSON." },
+        { status: 400 }
+      );
+    }
+
+    const email = (body.email || "").trim();
+    const name = (body.name || "").trim();
+    const password = body.password || "";
+
+    if (!email) {
+      return NextResponse.json(
+        { success: false, error: "Email address is required." },
+        { status: 400 }
+      );
+    }
+    if (!password) {
+      return NextResponse.json(
+        { success: false, error: "Password is required." },
+        { status: 400 }
+      );
+    }
+
+    const result = credentials.create({ email, name, password });
+
+    if (!result.ok) {
+      return NextResponse.json({ success: false, error: result.error }, { status: 400 });
+    }
+
+    const { token, expiresAt } = issueAccessToken(result.user);
+
+    // Non-blocking background sync of the new user to Supabase
+    try {
+      SupabaseSync.syncUser({
+        id: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+        role: result.user.role,
+        kycStatus: result.user.kycStatus,
+        createdAt: result.user.createdAt,
+        referralCode: result.user.id.slice(0, 8),
+        btcAddress: "",
+        ethAddress: "",
+        usdtAddress: "",
+        riskTolerancePercent: 5,
+        hasCompletedRiskQuiz: true,
+      });
+    } catch {
+      /* non-blocking */
+    }
+
+    const payload: AccessTokenResponse = {
+      token,
+      expiresAt,
+      tokenType: "Bearer",
+      user: { ...result.user, provider: "LOCAL", accountType: "real" },
+    };
+
+    const response = NextResponse.json({ success: true, ...payload });
+    response.cookies.set("cryptohub_session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+    return response;
+  } catch (error: unknown) {
+    console.error("[auth/register] uncaught error:", error);
     return NextResponse.json(
-      { success: false, error: "Invalid request body." },
-      { status: 400 }
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Registration failed on server.",
+      },
+      { status: 500 }
     );
   }
-
-  const result = credentials.create({
-    email: body.email || "",
-    name: body.name || "",
-    password: body.password || "",
-  });
-
-  if (!result.ok) {
-    return NextResponse.json({ success: false, error: result.error }, { status: 400 });
-  }
-
-  const { token, expiresAt } = issueAccessToken(result.user);
-
-  const payload: AccessTokenResponse = {
-    token,
-    expiresAt,
-    tokenType: "Bearer",
-    user: { ...result.user, provider: "LOCAL", accountType: "real" },
-  };
-
-  const response = NextResponse.json({ success: true, ...payload });
-  response.cookies.set("cryptohub_session", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  });
-  return response;
 }

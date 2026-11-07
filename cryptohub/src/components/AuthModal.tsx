@@ -51,6 +51,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     if (!email.trim()) return setError("Enter your email address.");
     if (!password) return setError("Enter your password.");
+    if (mode === "REGISTER" && password.length < 6) {
+      return setError("Password must be at least 6 characters.");
+    }
     if (mode === "REGISTER" && name.trim().length < 2) {
       return setError("Enter your full name.");
     }
@@ -182,7 +185,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") submit();
                 }}
-                placeholder={isRegister ? "At least 8 characters, with a number" : "Your password"}
+                placeholder={isRegister ? "At least 6 characters" : "Your password"}
                 className="w-full pl-9 pr-16 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
               />
               <button

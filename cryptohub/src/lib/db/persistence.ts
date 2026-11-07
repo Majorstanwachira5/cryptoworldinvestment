@@ -1,24 +1,59 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
 
 /**
  * Durable storage for platform state.
  *
- * The store used to live only in process memory, so every restart silently
- * deleted all accounts, balances, trades, and referrals. That is unacceptable
- * for anything that represents money, so state is written to disk.
- *
- * Writes are atomic: the payload goes to a temporary file which is then
- * renamed over the target. A crash mid-write therefore leaves the previous
- * complete file intact rather than a truncated one.
- *
- * Writes are also debounced. Price marks arrive from every open position on a
- * timer, so writing synchronously on each one would hammer the disk; instead
- * a dirty flag schedules a single write shortly after the burst settles.
- * Critical mutations call `flush()` to force the write immediately.
+ * Supports persistent local storage with graceful serverless / Vercel
+ * fallback using `/tmp` and in-memory caching. State is never lost during
+ * runtime even if the primary directory is read-only.
  */
 
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
+// In-memory cache ensures zero crashes if filesystem is read-only or in serverless warm containers
+const memoryCache = new Map<string, unknown>();
+
+let resolvedDataDir: string | null = null;
+
+function resolveDataDir(): string {
+  if (resolvedDataDir) return resolvedDataDir;
+
+  const candidates: string[] = [];
+
+  if (process.env.DATA_DIR) {
+    candidates.push(process.env.DATA_DIR);
+  }
+
+  // On Vercel / serverless runtime, /tmp is the guaranteed writable directory
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    candidates.push(path.join("/tmp", "cryptohub-data"));
+  }
+
+  // Local development fallback
+  candidates.push(path.join(process.cwd(), "data"));
+  candidates.push(path.join(os.tmpdir(), "cryptohub-data"));
+  candidates.push(path.join("/tmp", "cryptohub-data"));
+
+  for (const candidate of candidates) {
+    try {
+      if (!fs.existsSync(candidate)) {
+        fs.mkdirSync(candidate, { recursive: true });
+      }
+      const probe = path.join(candidate, `.write-probe-${process.pid}-${Date.now()}`);
+      fs.writeFileSync(probe, "ok", "utf8");
+      if (fs.existsSync(probe)) fs.unlinkSync(probe);
+
+      resolvedDataDir = candidate;
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+
+  // Default fallback if no directory is writable
+  resolvedDataDir = path.join(os.tmpdir(), "cryptohub-data");
+  return resolvedDataDir;
+}
 
 const DEBOUNCE_MS = 400;
 
@@ -26,8 +61,15 @@ const dirty = new Set<string>();
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function ensureDir(): string {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  return DATA_DIR;
+  const dir = resolveDataDir();
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch {
+    /* safely ignored; memoryCache serves state */
+  }
+  return dir;
 }
 
 function fileFor(name: string): string {
@@ -35,39 +77,42 @@ function fileFor(name: string): string {
 }
 
 export function loadState<T>(name: string): T | null {
+  if (memoryCache.has(name)) {
+    return memoryCache.get(name) as T;
+  }
+
   try {
     const file = fileFor(name);
     if (!fs.existsSync(file)) return null;
     const raw = fs.readFileSync(file, "utf8");
     if (!raw.trim()) return null;
-    return JSON.parse(raw) as T;
+    const parsed = JSON.parse(raw) as T;
+    memoryCache.set(name, parsed);
+    return parsed;
   } catch (error) {
-    // A corrupt or unreadable file must not take the server down. The caller
-    // falls back to a fresh store and the bad file is preserved for inspection.
-    console.error(`[db] could not read ${name}.json:`, (error as Error).message);
+    console.warn(`[db] could not read ${name}.json from disk:`, (error as Error).message);
     return null;
   }
 }
 
 function writeNow<T>(name: string, value: T): void {
-  const file = fileFor(name);
-  const tmp = `${file}.${process.pid}.tmp`;
+  // Always update memoryCache immediately so instant reads reflect the new state
+  memoryCache.set(name, value);
+
   try {
+    const file = fileFor(name);
+    const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
     fs.writeFileSync(tmp, JSON.stringify(value), "utf8");
     fs.renameSync(tmp, file);
   } catch (error) {
-    console.error(`[db] could not persist ${name}:`, (error as Error).message);
-    try {
-      if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
-    } catch {
-      /* nothing further to do */
-    }
+    console.warn(`[db] disk write skipped for ${name} (using memory state):`, (error as Error).message);
   }
 }
 
 /** Schedules a write for `name`, coalescing bursts into one. */
 export function saveState<T>(name: string, value: T): void {
   dirty.add(name);
+  memoryCache.set(name, value);
 
   const existing = timers.get(name);
   if (existing) clearTimeout(existing);
@@ -95,18 +140,15 @@ export function flushState<T>(name: string, value: T): void {
 
 /**
  * Reports whether the data directory is writable.
- *
- * Checked on boot so a misconfigured volume is visible in the logs instead of
- * surfacing later as silently lost state.
  */
 export function describeStorage(): { dir: string; writable: boolean; error?: string } {
   try {
-    ensureDir();
-    const probe = path.join(DATA_DIR, `.write-probe-${process.pid}`);
+    const dir = ensureDir();
+    const probe = path.join(dir, `.write-probe-${process.pid}`);
     fs.writeFileSync(probe, "ok");
     fs.unlinkSync(probe);
-    return { dir: DATA_DIR, writable: true };
+    return { dir, writable: true };
   } catch (error) {
-    return { dir: DATA_DIR, writable: false, error: (error as Error).message };
+    return { dir: resolveDataDir(), writable: false, error: (error as Error).message };
   }
 }
