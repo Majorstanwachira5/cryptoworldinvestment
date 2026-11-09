@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import confetti from "canvas-confetti";
 import {
   Balance,
   User,
@@ -43,6 +44,7 @@ interface HomeDashboardProps {
   onNavigateToMike: () => void;
   onOpenDeposit: (tab?: "DEPOSIT" | "WITHDRAW") => void;
   onCloseTrade: (tradeId: string, exitPrice: number) => void;
+  onRefreshBalance?: () => void;
 }
 
 export const HomeDashboard: React.FC<HomeDashboardProps> = ({
@@ -59,6 +61,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onNavigateToMike,
   onOpenDeposit,
   onCloseTrade,
+  onRefreshBalance,
 }) => {
   const [showBalance, setShowBalance] = useState(true);
   const [dismissBanner, setDismissBanner] = useState(false);
@@ -67,6 +70,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [favorites] = useState<string[]>(["BTC/USDT", "ETH/USDT", "SOL/USDT"]);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [isAutoTrading, setIsAutoTrading] = useState(false);
 
   const [levelInfo, setLevelInfo] = useState<{
     effectiveLevel: number;
@@ -74,28 +78,69 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     successfulReferralsCount: number;
     dailyEarningRange: [number, number] | null;
     eligibleForAutoTrade: boolean;
+    withdrawableEarnings: number;
+    hasRunToday: boolean;
   } | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  const fetchLevels = useCallback(() => {
     authFetch("/api/rewards/levels")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (active && d?.success) {
+        if (d?.success) {
           setLevelInfo({
             effectiveLevel: d.effectiveLevel ?? 0,
             cumulativeDeposits: d.cumulativeDeposits ?? 0,
             successfulReferralsCount: d.successfulReferralsCount ?? 0,
             dailyEarningRange: d.dailyEarningRange ?? null,
             eligibleForAutoTrade: Boolean(d.eligibleForAutoTrade),
+            withdrawableEarnings: d.withdrawableEarnings ?? 0,
+            hasRunToday: Boolean(d.hasRunToday),
           });
         }
       })
       .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [balance?.availableBalance]);
+  }, []);
+
+  useEffect(() => {
+    fetchLevels();
+  }, [fetchLevels, balance?.availableBalance]);
+
+  const handleRunAutoTrade = async () => {
+    if (!levelInfo || levelInfo.effectiveLevel === 0) {
+      alert("Quantitative Auto-Trade requires a working capital deposit of at least $300.00 USDT (Level 3: $5–$8/day, Level 2: $8–$14/day, Level 1: $10–$18/day).\n\nOpening deposit interface...");
+      onOpenDeposit("DEPOSIT");
+      return;
+    }
+
+    if (levelInfo.hasRunToday) {
+      alert("Today's Quantitative Auto-Trade yield has already been credited to your withdrawable earnings.\n\nNext daily cycle unlocks at 00:00 UTC.");
+      return;
+    }
+
+    setIsAutoTrading(true);
+    try {
+      const res = await authFetch("/api/rewards/auto-trade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.success && data.result) {
+        if (data.result.credited) {
+          confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+          alert(`⚡ Daily Auto-Trade Yield Credited!\n+$${data.result.amount.toFixed(2)} USDT has been added to your withdrawable balance.`);
+          fetchLevels();
+          onRefreshBalance?.();
+        } else {
+          alert(`Auto-Trade Status:\n${data.result.reason}`);
+        }
+      }
+    } catch {
+      alert("Network error communicating with Auto-Trade engine.");
+    } finally {
+      setIsAutoTrading(false);
+    }
+  };
 
   const realBal = balance ?? profile?.real;
   const realAvailable =
@@ -286,8 +331,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </button>
         </div>
 
-        {/* Secondary Account Metrics Strip */}
-        <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-[#142848] text-[11px] relative z-10">
+        {/* Secondary Account Metrics Strip: Equity | Free Margin | Working Capital | Withdrawable */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4 pt-3 border-t border-[#142848] text-[11px] relative z-10">
           <div>
             <span className="text-[#5c7395] uppercase block font-semibold text-[9px]">Equity</span>
             <span className="font-mono font-bold text-[#38bdf8]">
@@ -301,9 +346,20 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </span>
           </div>
           <div>
-            <span className="text-[#5c7395] uppercase block font-semibold text-[9px]">Deposited</span>
+            <span className="text-[#5c7395] uppercase block font-semibold text-[9px]">Working Capital</span>
             <span className="font-mono font-bold text-slate-200">
               {showBalance ? formatMoney(realDeposited, currency) : "••••••"}
+            </span>
+          </div>
+          <div>
+            <span className="text-[#5c7395] uppercase block font-semibold text-[9px] flex items-center gap-1">
+              <span>Withdrawable</span>
+              {(levelInfo?.withdrawableEarnings ?? 0) >= 10 && (
+                <span className="text-[8px] bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 px-1 py-0.2 rounded font-bold">≥$10</span>
+              )}
+            </span>
+            <span className="font-mono font-bold text-[#e2ff3b]">
+              {showBalance ? formatMoney(levelInfo?.withdrawableEarnings ?? 0, currency) : "••••••"}
             </span>
           </div>
         </div>
@@ -366,7 +422,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
       {/* 5. One-Click Copy Trading Promotional Banner (Futuristic Ocean Hologram + Acid Accents) */}
       <div
-        onClick={onNavigateToMike}
+        onClick={handleRunAutoTrade}
         role="button"
         tabIndex={0}
         className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#030c1c] via-[#081a38] to-[#040e24] border border-[#143564] hover:border-[#0ea5e9]/60 p-4 sm:p-5 cursor-pointer shadow-2xl transition-all group"
@@ -378,7 +434,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <div className="absolute inset-1 rounded-full border border-[#0ea5e9]/50 border-dashed animate-spin" style={{ animationDuration: "12s" }} />
             <div className="absolute inset-3 rounded-full border border-[#38bdf8] shadow-[0_0_15px_rgba(56,189,248,0.6)]" />
             <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-tr from-[#0284c7] via-[#0ea5e9] to-[#e2ff3b] flex items-center justify-center text-[#050b14] font-black text-lg sm:text-xl shadow-lg shadow-[#0ea5e9]/50">
-              ₿
+              {isAutoTrading ? "⚡" : "₿"}
             </div>
           </div>
 
@@ -386,21 +442,40 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <div className="flex-1 min-w-0 pr-8">
             <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-[#38bdf8] mb-0.5">
               <Sparkles className="w-3 h-3 text-[#e2ff3b]" />
-              <span>QUANTITATIVE AUTO-TRADE</span>
+              <span>
+                QUANTITATIVE AUTO-TRADE{" "}
+                {levelInfo && levelInfo.effectiveLevel > 0
+                  ? `• LEVEL ${levelInfo.effectiveLevel} ACTIVE`
+                  : "• UNLOCK TIER"}
+              </span>
             </div>
             <h3 className="text-base sm:text-lg font-extrabold text-white tracking-tight leading-tight group-hover:text-[#7dd3fc] transition-colors">
-              One-click copy trading
+              {levelInfo && levelInfo.effectiveLevel > 0
+                ? levelInfo.hasRunToday
+                  ? "Today's Yield Credited ✓"
+                  : `Claim Daily Yield ($${levelInfo.dailyEarningRange?.[0]?.toFixed(2)}–$${levelInfo.dailyEarningRange?.[1]?.toFixed(2)} USDT)`
+                : "One-click copy trading"}
             </h3>
             <p className="text-xs sm:text-sm text-[#e2ff3b] font-bold mt-0.5 flex items-center gap-1">
               <span className="text-[#38bdf8]">&gt;&gt;&gt;</span>
-              <span>easily generate profits.</span>
+              <span>
+                {levelInfo && levelInfo.effectiveLevel > 0
+                  ? levelInfo.hasRunToday
+                    ? "Active in quantitative model • Next cycle unlocks 00:00 UTC"
+                    : isAutoTrading
+                    ? "Executing algorithmic trades..."
+                    : "Tap to credit today's automated trading profit"
+                  : "Deposit $300 to activate daily yields."}
+              </span>
             </p>
           </div>
 
-          {/* 1/2 Indicator Badge */}
+          {/* Indicator Badge */}
           <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black bg-[#e2ff3b] text-[#050b14] shadow-sm">
-              1/2
+              {levelInfo && levelInfo.effectiveLevel > 0
+                ? `L${levelInfo.effectiveLevel}`
+                : "1/2"}
             </span>
           </div>
         </div>

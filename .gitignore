@@ -33,3 +33,5 @@ dist/
 *.db-wal
 *.db-shm
 backend/cryptohub.db*
+data/
+**/data/

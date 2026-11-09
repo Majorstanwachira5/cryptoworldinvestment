@@ -45,9 +45,9 @@ export const DepositModal: React.FC<DepositModalProps> = ({
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [paylorIntent, setPaylorIntent] = useState<any | null>(null);
 
-  // Withdrawal States (Authoritative minimum $100.00 USDT)
+  // Withdrawal States (Authoritative minimum $10.00 USDT)
   const [withdrawAddress, setWithdrawAddress] = useState("");
-  const [withdrawAmount, setWithdrawAmount] = useState("100");
+  const [withdrawAmount, setWithdrawAmount] = useState("10");
   const [withdrawalsHistory, setWithdrawalsHistory] = useState<any[]>([]);
   const [depositsHistory, setDepositsHistory] = useState<any[]>([]);
 
@@ -180,9 +180,9 @@ export const DepositModal: React.FC<DepositModalProps> = ({
     setSuccessNotice(null);
 
     const numWithdraw = parseFloat(withdrawAmount);
-    if (!Number.isFinite(numWithdraw) || numWithdraw < 100) {
+    if (!Number.isFinite(numWithdraw) || numWithdraw < 10) {
       setLoading(false);
-      setErrorNotice("Minimum withdrawal amount is $100.00 USDT (server-enforced).");
+      setErrorNotice("Minimum withdrawal amount is $10.00 USDT.");
       return;
     }
 
@@ -428,13 +428,13 @@ export const DepositModal: React.FC<DepositModalProps> = ({
 
               <div>
                 <label className="text-xs font-semibold text-slate-400 block mb-1">
-                  Withdrawal Amount (Minimum $100.00 USDT)
+                  Withdrawal Amount (Minimum $10.00 USDT)
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-2.5 text-sm text-slate-500 font-bold">$</span>
                   <input
                     type="number"
-                    min="100"
+                    min="10"
                     step="0.01"
                     required
                     value={withdrawAmount}
@@ -444,25 +444,33 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                 </div>
               </div>
 
-              {/* Fee Breakdown */}
+              {/* Fee Breakdown & Working Capital Governance */}
               <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 text-xs space-y-1.5">
                 <div className="flex justify-between text-slate-400">
-                  <span>Minimum Withdrawal (Server-Enforced):</span>
-                  <span className="font-mono text-slate-200">100.00 USDT</span>
+                  <span>Minimum Withdrawal:</span>
+                  <span className="font-mono text-slate-200">10.00 USDT</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
                   <span>Network Gas Fee (TRON TRC20):</span>
                   <span className="font-mono text-slate-200">1.00 USDT</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
-                  <span>Total Deducted / Reserved:</span>
-                  <span className="font-mono font-bold text-amber-400">
-                    {((parseFloat(withdrawAmount) || 0) + 1.0).toFixed(2)} USDT
+                  <span>Gross Amount Deducted:</span>
+                  <span className="font-mono font-bold text-slate-200">
+                    {(parseFloat(withdrawAmount) || 0).toFixed(2)} USDT
                   </span>
                 </div>
-                <div className="pt-1 border-t border-slate-800 text-[11px] text-slate-500 flex items-center gap-1">
-                  <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  Reserved atomically upon submission; reviewed by Admin Authority.
+                <div className="flex justify-between text-slate-400">
+                  <span>Net Sent to Destination Wallet:</span>
+                  <span className="font-mono font-bold text-[#e2ff3b]">
+                    {Math.max(0, (parseFloat(withdrawAmount) || 0) - 1.0).toFixed(2)} USDT
+                  </span>
+                </div>
+                <div className="pt-1.5 border-t border-slate-800 text-[11px] text-slate-400 flex items-start gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-[#e2ff3b] shrink-0 mt-0.5" />
+                  <span>
+                    Withdrawals are drawn from your generated earnings (Auto-Trade yields, Referral bonuses, Trade profits). Working capital deposits remain active to generate daily yields.
+                  </span>
                 </div>
               </div>
 

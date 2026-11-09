@@ -9,6 +9,12 @@ export interface LevelDerivation {
   referralPromotedLevel: UserLevel;
   effectiveLevel: UserLevel;
   levelName: string;
+  dailyEarningRange: [number, number] | null;
+  eligibleForAutoTrade: boolean;
+  withdrawableEarnings: number;
+  totalEarnings: number;
+  totalWithdrawn: number;
+  hasRunToday: boolean;
 }
 
 export interface AutoTradeResult {
@@ -42,16 +48,16 @@ export class RewardEngine {
 
   public static readonly REFERRAL_REWARD_USD = 30.0;
   public static readonly WEDNESDAY_BONUS_USD = 1.0;
-  public static readonly WITHDRAWAL_MINIMUM_USD = 100.0;
+  public static readonly WITHDRAWAL_MINIMUM_USD = 10.0;
 
   /**
    * Derive user level strictly server-side based on cumulative confirmed deposits
-   * and successful referral counts.
+   * and successful referral counts, plus calculate withdrawable earnings vs locked working capital.
    */
   public static deriveUserLevel(userId: string): LevelDerivation {
     const userLedger = db.getLedger(userId, "REAL");
     
-    // Cumulative confirmed USDT deposits
+    // Cumulative confirmed USDT deposits (Locked Working Capital)
     const cumulativeDeposits = userLedger
       .filter((entry) => entry.type === "DEPOSIT" && entry.amount > 0)
       .reduce((sum, entry) => sum + entry.amount, 0);
@@ -92,10 +98,53 @@ export class RewardEngine {
 
     const levelNames: Record<UserLevel, string> = {
       0: "Unranked / Below Entry",
-      3: "Level 3 (Entry)",
-      2: "Level 2 (Mid)",
-      1: "Level 1 (Top Tier)",
+      3: "Level 3 (Entry - $300)",
+      2: "Level 2 (Mid - $500)",
+      1: "Level 1 (Top Tier - $600+)",
     };
+
+    const dailyRanges: Record<UserLevel, [number, number] | null> = {
+      0: null,
+      3: [this.AUTO_TRADE_RANGES[3].min, this.AUTO_TRADE_RANGES[3].max],
+      2: [this.AUTO_TRADE_RANGES[2].min, this.AUTO_TRADE_RANGES[2].max],
+      1: [this.AUTO_TRADE_RANGES[1].min, this.AUTO_TRADE_RANGES[1].max],
+    };
+
+    // Calculate Withdrawable Earnings vs Principal Deposit
+    // Earnings types: AUTO_TRADE_EARNING, REFERRAL_BONUS, WELCOME_BONUS, WEDNESDAY_BONUS, TRADE_PROFIT
+    const totalEarnings = userLedger
+      .filter((e) =>
+        [
+          "AUTO_TRADE_EARNING",
+          "REFERRAL_BONUS",
+          "WELCOME_BONUS",
+          "WEDNESDAY_BONUS",
+          "TRADE_PROFIT",
+        ].includes(e.type)
+      )
+      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+
+    const totalLosses = userLedger
+      .filter((e) => e.type === "TRADE_LOSS")
+      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+
+    const totalWithdrawn = userLedger
+      .filter((e) => e.type === "WITHDRAWAL")
+      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+
+    const netEarnings = Math.max(0, totalEarnings - totalLosses);
+    const withdrawableEarnings = Math.max(
+      0,
+      Math.round((netEarnings - totalWithdrawn) * 100) / 100
+    );
+
+    const today = new Date().toISOString().split("T")[0];
+    const hasRunToday = userLedger.some(
+      (e) =>
+        e.type === "AUTO_TRADE_EARNING" &&
+        (e.txHash === `auto_trade_${today}_${userId}` ||
+          e.description.includes(`Auto-Trade Daily Credit (${today})`))
+    );
 
     return {
       userId,
@@ -105,6 +154,83 @@ export class RewardEngine {
       referralPromotedLevel,
       effectiveLevel,
       levelName: levelNames[effectiveLevel],
+      dailyEarningRange: dailyRanges[effectiveLevel],
+      eligibleForAutoTrade: effectiveLevel > 0,
+      withdrawableEarnings,
+      totalEarnings: Math.round(totalEarnings * 100) / 100,
+      totalWithdrawn: Math.round(totalWithdrawn * 100) / 100,
+      hasRunToday,
+    };
+  }
+
+  /**
+   * Run or claim daily auto-trade for a single user.
+   * Strictly idempotent per date.
+   */
+  public static runDailyAutoTradeForUser(userId: string, dateOverride?: string): AutoTradeResult {
+    const today = dateOverride || new Date().toISOString().split("T")[0];
+    const derivation = this.deriveUserLevel(userId);
+    const level = derivation.effectiveLevel;
+
+    if (level === 0) {
+      return {
+        userId,
+        level: 0,
+        amount: 0,
+        credited: false,
+        reason: "Account is below Level 3. Deposit at least $300.00 USDT to activate Quantitative Auto-Trade.",
+      };
+    }
+
+    const userLedger = db.getLedger(userId, "REAL");
+    const existingToday = userLedger.find(
+      (e) =>
+        e.type === "AUTO_TRADE_EARNING" &&
+        (e.txHash === `auto_trade_${today}_${userId}` ||
+          e.description.includes(`Auto-Trade Daily Credit (${today})`))
+    );
+
+    if (existingToday) {
+      return {
+        userId,
+        level,
+        amount: existingToday.amount,
+        credited: false,
+        ledgerId: existingToday.id,
+        reason: `Today's Auto-Trade yield of $${existingToday.amount.toFixed(2)} USDT has already been credited (${today}). Next yield unlocks at 00:00 UTC.`,
+      };
+    }
+
+    const range = this.AUTO_TRADE_RANGES[level as 1 | 2 | 3];
+    const seedString = `${today}:${userId}`;
+    let hash = 0;
+    for (let i = 0; i < seedString.length; i++) {
+      hash = (hash << 5) - hash + seedString.charCodeAt(i);
+      hash |= 0;
+    }
+    const normalized = Math.abs(hash % 1000) / 1000.0;
+    const rawAmount = range.min + normalized * (range.max - range.min);
+    const amount = Math.round(rawAmount * 100) / 100;
+
+    const txHash = `auto_trade_${today}_${userId}`;
+    const entry = db.addLedgerEntry(
+      userId,
+      {
+        type: "AUTO_TRADE_EARNING",
+        amount,
+        currency: "USDT",
+        txHash,
+        description: `Auto-Trade Daily Credit (${today}) for Level ${level} ($${amount.toFixed(2)} USDT)`,
+      },
+      "REAL"
+    );
+
+    return {
+      userId,
+      level,
+      amount,
+      credited: true,
+      ledgerId: entry.id,
     };
   }
 

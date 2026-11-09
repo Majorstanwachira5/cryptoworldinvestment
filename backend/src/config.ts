@@ -47,6 +47,6 @@ export const config = {
   requiredDepositConfirmations: 12,
 
   // Withdrawal Parameters
-  minWithdrawalUsdt: 100.0,
+  minWithdrawalUsdt: 10.0,
   withdrawalFeeUsdt: 1.0
 };

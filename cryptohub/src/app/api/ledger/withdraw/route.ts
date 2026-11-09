@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BlockchainLedgerService } from "@/lib/ledger/trc20";
 import { requireAccountAccess, platformUserId } from "@/lib/auth/access";
+import { RewardEngine } from "@/lib/rewards/engine";
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +36,11 @@ export async function POST(request: NextRequest) {
     }
 
     const withdrawAmount = Number(amount);
-    if (!Number.isFinite(withdrawAmount) || withdrawAmount < 100) {
+    if (!Number.isFinite(withdrawAmount) || withdrawAmount < RewardEngine.WITHDRAWAL_MINIMUM_USD) {
       return NextResponse.json(
         {
           success: false,
-          error: "Withdrawal minimum is $100.00 USDT, server-enforced. Requests below $100.00 are rejected.",
+          error: `Withdrawal minimum is $${RewardEngine.WITHDRAWAL_MINIMUM_USD.toFixed(2)} USDT, server-enforced. Requests below $${RewardEngine.WITHDRAWAL_MINIMUM_USD.toFixed(2)} are rejected.`,
         },
         { status: 400 }
       );

@@ -792,6 +792,7 @@ function TradingPlatformContent() {
                 onNavigateToMike={() => setSection("MIKE_AI")}
                 onOpenDeposit={(tab) => handleOpenDepositModal(tab || "DEPOSIT")}
                 onCloseTrade={handleCloseTrade}
+                onRefreshBalance={() => fetchBalanceAndUser("REAL")}
               />
             </div>
           )}

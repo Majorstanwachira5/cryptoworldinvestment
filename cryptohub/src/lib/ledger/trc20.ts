@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { loadState, flushState } from "@/lib/db/persistence";
 import { SupabaseSync } from "@/lib/supabase/sync";
+import { RewardEngine } from "@/lib/rewards/engine";
 
 export type DepositState =
   | "DETECTED"
@@ -211,11 +212,11 @@ export class BlockchainLedgerService {
     amount: number;
     idempotencyKey?: string;
   }): { ok: boolean; withdrawal?: WithdrawalRecord; error?: string } {
-    // Authoritative Rule: Withdrawal minimum $100.00, server-enforced
-    if (!input.amount || input.amount < 100.0) {
+    // Authoritative Rule: Withdrawal minimum $10.00 USDT, server-enforced
+    if (!input.amount || input.amount < RewardEngine.WITHDRAWAL_MINIMUM_USD) {
       return {
         ok: false,
-        error: "Withdrawal minimum is $100.00 USDT, server-enforced. Requests below $100.00 are rejected.",
+        error: `Withdrawal minimum is $${RewardEngine.WITHDRAWAL_MINIMUM_USD.toFixed(2)} USDT, server-enforced. Requests below $${RewardEngine.WITHDRAWAL_MINIMUM_USD.toFixed(2)} are rejected.`,
       };
     }
 
@@ -231,14 +232,24 @@ export class BlockchainLedgerService {
     }
 
     const fee = 1.0; // 1 USDT standard TRON network gas fee
-    const totalRequired = input.amount + fee;
+    const totalRequired = input.amount;
+    const netPayout = Math.max(0, input.amount - fee);
 
     // Check REAL available balance
     const realBalance = db.getBalance(input.userId, "REAL");
     if (realBalance.availableBalance < totalRequired) {
       return {
         ok: false,
-        error: `Insufficient available funds. Required: ${totalRequired} USDT (${input.amount} USDT + 1 USDT fee), Available: ${realBalance.availableBalance} USDT`,
+        error: `Insufficient available funds. Required: ${totalRequired.toFixed(2)} USDT, Available: ${realBalance.availableBalance.toFixed(2)} USDT`,
+      };
+    }
+
+    // Check Working Capital Principle: Withdrawals are drawn from generated earnings, NOT initial working capital deposit
+    const levelDerivation = RewardEngine.deriveUserLevel(input.userId);
+    if (levelDerivation.withdrawableEarnings < totalRequired) {
+      return {
+        ok: false,
+        error: `Withdrawal restricted to generated earnings (Auto-Trade yields, Referral rewards, Trade profits). Working capital deposit ($${levelDerivation.cumulativeDeposits.toFixed(2)} USDT) remains active in Quantitative Trading. Withdrawable earnings available: $${levelDerivation.withdrawableEarnings.toFixed(2)} USDT (Minimum $10.00 USDT).`,
       };
     }
 
@@ -267,7 +278,7 @@ export class BlockchainLedgerService {
         amount: totalRequired,
         currency: "USDT",
         txHash: id,
-        description: `Withdrawal reserved for ${input.destinationAddress} (${input.amount} USDT + 1 USDT fee)`,
+        description: `Withdrawal reserved for ${input.destinationAddress} (${input.amount.toFixed(2)} USDT gross, ${netPayout.toFixed(2)} USDT net after 1 USDT TRON fee)`,
       },
       "REAL"
     );
