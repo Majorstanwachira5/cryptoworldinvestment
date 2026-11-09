@@ -33,7 +33,7 @@ const SUGGESTED_QUESTIONS = [
 const INITIAL_MESSAGE: Message = {
   id: "init_mike_01",
   role: "assistant",
-  content: `Hello! I am **Mike Trades**, your institutional trading assistant on CryptoHub.
+  content: `Hello! I am **Mike Trades**, your institutional trading assistant on CryptoWorldInvestment (CWI).
 
 I am here to help you navigate our quantitative trading tools, explain our **quantitative risk management framework**, understand indicator predictions, and maximize your learning.
 
@@ -179,7 +179,7 @@ export const MikeTradesChat: React.FC = () => {
               </span>
             </div>
             <p className="text-[11px] text-slate-400">
-              CryptoHub Quantitative Intelligence & Platform Guide
+              CryptoWorldInvestment Quantitative Intelligence & Platform Guide
             </p>
           </div>
         </div>

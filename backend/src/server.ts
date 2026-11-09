@@ -89,11 +89,11 @@ const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
 
 // Healthcheck
 app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'CryptoHub AI Shared Backend', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'CryptoWorldInvestment (CWI) Backend', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'CryptoHub AI Shared Backend', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'CryptoWorldInvestment (CWI) Backend', timestamp: new Date().toISOString() });
 });
 
 // --- AUTH ROUTES ---
@@ -483,7 +483,7 @@ app.post('/api/v1/admin/auth/login', async (req: Request, res: Response) => {
 const PORT = config.port;
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
-    console.log(`[CryptoHub AI Backend] Running on http://localhost:${PORT}`);
+    console.log(`[CryptoWorldInvestment Backend] Running on http://localhost:${PORT}`);
   });
 }
 

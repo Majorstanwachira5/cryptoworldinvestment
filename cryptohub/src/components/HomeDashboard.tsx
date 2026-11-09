@@ -174,7 +174,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-2">
             <button
-              onClick={() => alert("CryptoHub Android PWA / APK package is configured. Add to Home Screen via browser menu for full native installation.")}
+              onClick={() => alert("CryptoWorldInvestment (CWI) Android PWA / APK package is configured. Add to Home Screen via browser menu for full native installation.")}
               className="h-7 w-7 rounded-full bg-[#e2ff3b] hover:bg-[#d5f32a] text-[#050b14] flex items-center justify-center font-black transition-all active:scale-95 shadow-md shadow-[#e2ff3b]/20"
               title="Download Android App"
             >

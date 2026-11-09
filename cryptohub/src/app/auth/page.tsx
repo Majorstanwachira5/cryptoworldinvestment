@@ -18,6 +18,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { loginAccount, registerAccount, readToken } from "@/lib/auth/session";
+import { CwiLogo } from "@/components/CwiLogo";
 
 /* ─────────────────────────── animated ticker strip ─────────────────────── */
 
@@ -226,16 +227,7 @@ export default function AuthPage() {
           >
             {/* logo */}
             <div className="flex items-center gap-3">
-              <div
-                className="h-10 w-10 rounded-xl flex items-center justify-center font-black text-white text-lg"
-                style={{ background: "linear-gradient(135deg,#6366f1,#06b6d4)" }}
-              >
-                CH
-              </div>
-              <div>
-                <div className="font-extrabold text-white text-lg leading-none">CryptoHub</div>
-                <div className="text-xs text-slate-500">Institutional-Grade Trading</div>
-              </div>
+              <CwiLogo size={42} showText textSubtitle="Institutional Quant Platform" />
             </div>
 
             {/* headline */}
@@ -300,17 +292,14 @@ export default function AuthPage() {
             <div className="glass-card rounded-2xl w-full max-w-sm p-7 fade-up" style={{ animationDelay: ".1s" }}>
               {/* card header */}
               <div className="text-center mb-6">
-                <div
-                  className="mx-auto mb-3 h-12 w-12 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg"
-                  style={{ background: "linear-gradient(135deg,#6366f1,#06b6d4)" }}
-                >
-                  CH
+                <div className="flex justify-center mb-3">
+                  <CwiLogo size={48} variant="icon" />
                 </div>
                 <h2 className="text-xl font-extrabold text-white">
                   {isRegister ? "Create Account" : "Welcome Back"}
                 </h2>
-                <p className="text-xs text-slate-500 mt-1">
-                  {isRegister ? "Join CryptoHub — free to start" : "Sign in to access your dashboard"}
+                <p className="text-xs text-slate-400 mt-1">
+                  {isRegister ? "Join CryptoWorldInvestment — Start Trading" : "Sign in to access your dashboard"}
                 </p>
               </div>
 

@@ -18,7 +18,7 @@ export function buildReferralShareUrl(code: string, req?: NextRequest): string {
   }
 
   if (!base || base.includes("localhost")) {
-    base = "https://cryptohub.trade";
+    base = "https://cryptoworldinvestment.vercel.app";
   }
 
   // Ensure no trailing slash

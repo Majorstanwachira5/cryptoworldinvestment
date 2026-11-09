@@ -9,12 +9,12 @@ interface ChatMessage {
 }
 
 const SYSTEM_PROMPT = `
-You are "Mike Trades", the institutional quantitative trading assistant for the CryptoHub platform.
-CryptoHub is an institutional-grade cryptocurrency and Forex live trading platform featuring automated quantitative prediction signals, real-time TradingView charts, TRC20 USDT blockchain settlement, and algorithmic risk management.
+You are "Mike Trades", the institutional quantitative trading assistant for the CryptoWorldInvestment (CWI) platform.
+CryptoWorldInvestment is an institutional-grade cryptocurrency and Forex live trading platform featuring automated quantitative prediction signals, real-time TradingView charts, TRC20 USDT blockchain settlement, and algorithmic risk management.
 
-Key CryptoHub Platform Knowledge:
+Key CryptoWorldInvestment Platform Knowledge:
 1. Strictly REAL Live Accounts Only:
-   - CryptoHub operates exclusively on live REAL accounts backed by our double-entry USDT ledger. There is no paper or demo trading.
+   - CryptoWorldInvestment operates exclusively on live REAL accounts backed by our double-entry USDT ledger. There is no paper or demo trading.
    - All balances equal the exact sum of verified ledger entries (0 drift tolerance).
 
 2. Quantitative Risk Governance:
@@ -49,7 +49,7 @@ function generateLocalKnowledgeResponse(userQuery: string): string {
   const query = userQuery.toLowerCase();
 
   if (query.includes("risk model") || query.includes("risk governance") || query.includes("win rate")) {
-    return `### The CryptoHub Quantitative Risk Governance Framework
+    return `### The CryptoWorldInvestment Quantitative Risk Governance Framework
 
 Our proprietary risk-containment framework is designed to maintain disciplined capital preservation over a series of live market setups:
 
@@ -74,7 +74,7 @@ Your account tier is **derived automatically on the server** from your cumulativ
   if (query.includes("deposit") || query.includes("withdraw") || query.includes("trc20") || query.includes("paylor") || query.includes("fund")) {
     return `### Live TRC20 USDT Funding & Withdrawals
 
-CryptoHub operates exclusively on **REAL live capital** settled on the TRON blockchain:
+CryptoWorldInvestment operates exclusively on **REAL live capital** settled on the TRON blockchain:
 
 1. **TRC20 USDT Deposits:** Open the **Deposit / Withdraw** modal to generate a Paylor TRC20 deposit intent (\`PAYL-EFSJUF\`) to vault \`TEbs6th1rgsrZNiYqdZEHGoJ3FJFA1zGYd\`. Deposits require **19 TRON block confirmations** on contract \`TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t\`.
 2. **Double-Entry Ledger:** Every confirmed deposit, trade PnL, and reward is recorded in your immutable USDT ledger.
@@ -82,7 +82,7 @@ CryptoHub operates exclusively on **REAL live capital** settled on the TRON bloc
   }
 
   if (query.includes("referral") || query.includes("invite") || query.includes("earn") || query.includes("bonus") || query.includes("share")) {
-    return `### CryptoHub $30.00 USDT Referral Program
+    return `### CryptoWorldInvestment $30.00 USDT Referral Program
 
 Earn live trading capital and unlock higher Auto-Trade tiers by inviting traders:
 
@@ -94,7 +94,7 @@ Earn live trading capital and unlock higher Auto-Trade tiers by inviting traders
   if (query.includes("rsi") || query.includes("macd") || query.includes("indicator") || query.includes("chart") || query.includes("prediction")) {
     return `### Quantitative Signals & Multi-Timeframe Analysis
 
-CryptoHub scores real OHLCV market series across 1m, 5m, 15m, 1H, 4H, and 1D timeframes:
+CryptoWorldInvestment scores real OHLCV market series across 1m, 5m, 15m, 1H, 4H, and 1D timeframes:
 
 * **RSI (Relative Strength Index):** Measures momentum extremes ($>70$ overbought, $<30$ oversold).
 * **MACD & ADX:** Tracks trend direction and directional movement strength.
@@ -105,14 +105,14 @@ CryptoHub scores real OHLCV market series across 1m, 5m, 15m, 1H, 4H, and 1D tim
   if (query.includes("stop loss") || query.includes("take profit") || query.includes("sl") || query.includes("tp")) {
     return `### Mandatory Stop Loss & Take Profit Governance
 
-Every live order on CryptoHub is protected by our server-side Risk Engine:
+Every live order on CryptoWorldInvestment is protected by our server-side Risk Engine:
 
 * **Stop Loss (SL):** Mandatory on every position; caps maximum downside to $\\le 2.0\\%$ of account equity.
 * **Take Profit (TP):** Mandatory on every position; must satisfy at least a **1:1.5 Reward-to-Risk ratio** relative to your Stop Loss distance.
 * **Risk Presets:** Use the **0.5%**, **1.0%**, or **2.0%** quick-sizing buttons in the Order Ticket to automatically size your position.`;
   }
 
-  return `Hello! I am **Mike Trades**, your institutional quantitative assistant on **CryptoHub**.
+  return `Hello! I am **Mike Trades**, your institutional quantitative assistant on **CryptoWorldInvestment (CWI)**.
 
 I can help you with:
 - **Quantitative Risk Governance:** How our mandatory 1:1.5 R:R and 2% max equity risk rules protect live capital.

@@ -38,12 +38,12 @@ export const ReferralPanel: React.FC<ReferralPanelProps> = ({
 
   const effectiveShareUrl = React.useMemo(() => {
     if (!stats) return "";
-    let url = stats.shareUrl || `https://cryptohub.trade/join?ref=${stats.code}`;
+    let url = stats.shareUrl || `https://cryptoworldinvestment.vercel.app/join?ref=${stats.code}`;
     if (url.includes("localhost")) {
       if (typeof window !== "undefined" && window.location.host && !window.location.host.includes("localhost")) {
         url = `${window.location.origin}/join?ref=${stats.code}`;
       } else {
-        url = `https://cryptohub.trade/join?ref=${stats.code}`;
+        url = `https://cryptoworldinvestment.vercel.app/join?ref=${stats.code}`;
       }
     }
     return url.replace(/\/\?ref=/g, "/join?ref=");
@@ -84,8 +84,8 @@ export const ReferralPanel: React.FC<ReferralPanelProps> = ({
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
-          title: "Join CryptoHub Live Trading",
-          text: `Trade Crypto and Forex with algorithmic risk management on CryptoHub! Use my referral code ${stats.code} to get started.`,
+          title: "Join CryptoWorldInvestment Live Trading",
+          text: `Trade Crypto and Forex with algorithmic risk management on CryptoWorldInvestment (CWI)! Use my referral code ${stats.code} to get started.`,
           url: effectiveShareUrl,
         });
         setShared(true);

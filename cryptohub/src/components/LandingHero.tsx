@@ -2,6 +2,7 @@
 
 import React from "react";
 import { MarketAsset, AccountType } from "@/types";
+import { CwiLogo } from "@/components/CwiLogo";
 import {
   ShieldCheck,
   ArrowRight,
@@ -26,15 +27,13 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
       <nav className="border-b border-slate-800/80 bg-[#0d121c]/90 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-cyan-500/20 font-black text-white text-lg">
-              CH
-            </div>
+            <CwiLogo size={38} variant="icon" />
             <div>
               <span className="font-extrabold text-lg tracking-tight">
-                Crypto<span className="text-cyan-400">Hub</span>
+                CryptoWorld<span className="text-[#e2ff3b]">Investment</span>
               </span>
-              <span className="ml-2 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">
-                Institutional Quant
+              <span className="ml-2 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#071d3a] text-[#38bdf8] border border-[#144588]">
+                CWI • Institutional Quant
               </span>
             </div>
           </div>
@@ -278,7 +277,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
 
       {/* Footer */}
       <footer className="border-t border-slate-800/80 bg-[#0a0e18] py-8 px-6 text-center text-xs text-slate-500">
-        <p>© 2026 CryptoHub Quantitative Institutional Terminal. All rights reserved.</p>
+        <p>© 2026 CryptoWorldInvestment (CWI) Quantitative Institutional Terminal. All rights reserved.</p>
         <p className="mt-1 text-[11px] text-slate-600">
           Trading cryptocurrencies and foreign exchange involves substantial risk of loss. All accounts operate on live capital.
         </p>

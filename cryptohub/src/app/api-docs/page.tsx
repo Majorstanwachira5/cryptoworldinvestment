@@ -67,7 +67,7 @@ export default function ApiDocsPage() {
           <div className="flex items-center gap-2">
             <Terminal className="w-4 h-4 text-cyan-400" />
             <h1 className="text-xs sm:text-sm font-bold tracking-wide text-white">
-              CryptoHub OpenAPI 3.0 Documentation
+              CryptoWorldInvestment (CWI) OpenAPI 3.0 Documentation
             </h1>
           </div>
         </div>

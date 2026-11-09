@@ -56,7 +56,7 @@ export default function AdminLoginPage() {
           <div className="w-14 h-14 bg-gradient-to-tr from-amber-500 to-amber-400 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/20 mb-4 border border-amber-300/30">
             <ShieldCheck className="w-8 h-8 text-slate-950" />
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-white">CryptoHub AI Authority</h1>
+          <h1 className="text-2xl font-black tracking-tight text-white">CryptoWorldInvestment Authority</h1>
           <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">
             Institutional Admin Gateway & RBAC
           </p>

@@ -369,7 +369,7 @@ export default function AdminPage() {
             <ShieldAlert className="w-5 h-5 text-slate-950 font-bold" />
           </div>
           <div>
-            <div className="text-sm font-black tracking-wide text-white uppercase">CryptoHub AI Authority</div>
+            <div className="text-sm font-black tracking-wide text-white uppercase">CryptoWorldInvestment (CWI) Authority</div>
             <div className="text-[10px] text-amber-400/90 font-mono tracking-widest uppercase">
               Admin Console · Port 3600 · REAL-Only TRC20 Ledger
             </div>

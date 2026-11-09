@@ -1,8 +1,8 @@
 {
-  "name": "cryptohub-ai-project",
+  "name": "cryptoworldinvestment",
   "version": "1.0.0",
   "private": true,
-  "description": "CryptoHub AI Real-Money Trading Suite — Frontend Client, Admin, and Backend",
+  "description": "CryptoWorldInvestment (CWI) Trading Suite — Frontend Client, Admin, and Backend",
   "workspaces": [
     "cryptohub",
     "admin-web",

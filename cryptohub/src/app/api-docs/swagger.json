@@ -1,9 +1,9 @@
-﻿{
+{
   "openapi": "3.0.3",
   "info": {
-    "title": "CryptoHub Institutional Trading Platform API",
+    "title": "CryptoWorldInvestment (CWI) Institutional Trading Platform API",
     "version": "1.0.0",
-    "description": "End-to-End API Documentation for CryptoHub Trading Platform, Supabase Authentication, Double-Entry Ledger, Risk Engine, and Quant Predictions."
+    "description": "End-to-End API Documentation for CryptoWorldInvestment (CWI) Trading Platform, Supabase Authentication, Double-Entry Ledger, Risk Engine, and Quant Predictions."
   },
   "servers": [
     {
@@ -23,7 +23,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "email": { "type": "string", "example": "trader@cryptohub.io" },
+                  "email": { "type": "string", "example": "trader@cryptoworldinvestment.com" },
                   "password": { "type": "string", "example": "password123" },
                   "action": { "type": "string", "enum": ["login", "signup"], "example": "login" }
                 }

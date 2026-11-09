@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CryptoHub Administrator Command Authority (Port 3002)",
-  description: "Dedicated isolated administrator control panel for CryptoHub AI platform operations",
+  title: "CryptoWorldInvestment (CWI) Administrator Command Authority",
+  description: "Dedicated isolated administrator control panel for CryptoWorldInvestment platform operations",
 };
 
 export default function RootLayout({

@@ -6,6 +6,7 @@ import { DisplayCurrency, formatMoney, formatSignedMoney } from "@/lib/fx/rates"
 import { NavSection } from "@/components/BottomNav";
 import { getInitialTheme, applyTheme, Theme } from "@/lib/theme";
 import Link from "next/link";
+import { CwiLogo } from "@/components/CwiLogo";
 import {
   Wallet,
   ArrowDownToLine,
@@ -147,13 +148,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   const userName = user?.name || "Live Trader";
-  const userEmail = user?.email || "trader@cryptohub.io";
+  const userEmail = user?.email || "trader@cryptoworldinvestment.com";
   const userInitials = userName
     .split(" ")
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase() || "CH";
+    .toUpperCase() || "CW";
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[#142848] bg-[#060c18]/95 dark:bg-[#060c18]/95 light:bg-white/95 backdrop-blur-md transition-colors">
@@ -165,16 +166,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={onGoHome}
               title="Return to Public Landing Page"
-              className="h-9 w-9 rounded-xl bg-gradient-to-tr from-[#0284c7] via-[#0ea5e9] to-[#e2ff3b] flex items-center justify-center font-black text-slate-950 text-sm tracking-wider hover:opacity-90 transition-opacity active:scale-95 shrink-0 focus:outline-none focus:ring-2 focus:ring-[#e2ff3b] shadow-md shadow-[#e2ff3b]/20"
+              className="p-0.5 rounded-xl hover:opacity-90 transition-opacity active:scale-95 shrink-0 focus:outline-none focus:ring-2 focus:ring-[#e2ff3b]"
             >
-              CH
+              <CwiLogo size={36} variant="icon" />
             </button>
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5 leading-none">
-                <span className="font-extrabold text-base tracking-tight text-white dark:text-white light:text-slate-900">
-                  Crypto<span className="text-[#e2ff3b]">Hub</span>
+                <span className="font-extrabold text-sm sm:text-base tracking-tight text-white dark:text-white light:text-slate-900">
+                  CryptoWorld<span className="text-[#e2ff3b]">Investment</span>
                 </span>
                 <span className="px-1.5 py-0.5 text-[9px] font-black tracking-widest uppercase rounded bg-[#071d3a] text-[#38bdf8] border border-[#144588] shadow-xs">
+                  CWI
+                </span>
+                <span className="px-1.5 py-0.5 text-[9px] font-black tracking-widest uppercase rounded bg-emerald-950 text-emerald-300 border border-emerald-700/80 shadow-xs">
                   REAL
                 </span>
                 <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black tracking-widest uppercase rounded-full bg-[#e2ff3b]/15 text-[#e2ff3b] border border-[#e2ff3b]/40 shadow-[0_0_10px_rgba(226,255,59,0.2)]">
@@ -183,7 +187,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
               <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#e2ff3b] animate-pulse shrink-0" />
-                <span className="text-slate-400 font-medium hidden sm:inline">Live Feed</span>
+                <span className="text-slate-400 font-medium hidden sm:inline">Freedom Through Trade</span>
                 <span className="text-slate-600 hidden sm:inline">•</span>
                 <span className="font-mono font-semibold text-[#38bdf8] truncate">
                   {activeSymbol}

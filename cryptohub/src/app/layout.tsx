@@ -24,14 +24,18 @@ const jetbrainsMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "CryptoHub | Institutional Crypto & Forex Quantitative Trading Platform",
+  title: "CryptoWorldInvestment (CWI) | Institutional Quantitative Trading Platform",
   description:
-    "High-frequency institutional trading platform for Crypto and Forex markets with algorithmic risk management, real-time TradingView charts, and automated quantitative prediction signals.",
-  applicationName: "CryptoHub",
+    "Financial Freedom Built on Trade and Winning. High-frequency institutional trading platform for Crypto and Forex markets with algorithmic risk management, real-time TradingView charts, and automated quantitative prediction signals.",
+  applicationName: "CryptoWorldInvestment",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "CryptoHub",
+    title: "CryptoWorldInvestment",
+  },
+  icons: {
+    icon: "/cwi-logo.svg",
+    apple: "/images/cwi-logo.png",
   },
 };
 
@@ -41,7 +45,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#0b0e14",
+  themeColor: "#050b14",
 };
 
 export default function RootLayout({
