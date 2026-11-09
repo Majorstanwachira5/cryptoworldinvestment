@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Home, TrendingUp, Gift, User, Sparkles } from "lucide-react";
+import { Home, BarChart3, BookOpen, Wallet, Gift } from "lucide-react";
 
 export type NavSection = "HOME" | "TRADE" | "REFERRAL" | "PROFILE" | "MIKE_AI";
 
@@ -19,35 +19,33 @@ const ITEMS: {
   label: string;
 }[] = [
   { id: "HOME", Icon: Home, label: "Home" },
-  { id: "TRADE", Icon: TrendingUp, label: "Trade" },
-  { id: "REFERRAL", Icon: Gift, label: "Referral" },
-  { id: "PROFILE", Icon: User, label: "Profile" },
-  { id: "MIKE_AI", Icon: Sparkles, label: "Mike AI" },
+  { id: "TRADE", Icon: BarChart3, label: "Market" },
+  { id: "MIKE_AI", Icon: BookOpen, label: "Futures" },
+  { id: "PROFILE", Icon: Wallet, label: "Wallet" },
 ];
 
 /**
- * Android Mobile Bottom Navigation Bar
- * 5 primary sections: HOME | TRADE | REFERRAL | PROFILE | MIKE AI
+ * Modern Mobile Bottom Navigation Bar (Matching Android Exchange UI)
+ * 4 primary sections: Home | Market | Futures | Wallet
+ * Highlighted with warm gold (#f0b90b) active state.
  * Fixed to viewport bottom with Android safe-area insets and touch targets >= 48px.
  */
 export const BottomNav: React.FC<BottomNavProps> = ({
   active,
   onSelect,
   tradesBadge = 0,
-  referralBadge = 0,
 }) => {
   const currentId = active === "TRADES" ? "TRADE" : active;
 
   return (
     <nav
-      aria-label="Android Mobile Navigation"
-      className="fixed bottom-0 inset-x-0 z-50 border-t border-slate-800/80 bg-[#0d121c]/95 dark:bg-[#0d121c]/95 light:bg-white/95 backdrop-blur-lg md:hidden transition-colors"
+      aria-label="Mobile Navigation"
+      className="fixed bottom-0 inset-x-0 z-50 border-t border-slate-800/80 bg-[#0c1017]/95 dark:bg-[#0c1017]/95 light:bg-white/95 backdrop-blur-xl md:hidden transition-colors"
     >
-      <ul className="grid grid-cols-5 h-14 items-center">
+      <ul className="grid grid-cols-4 h-14 items-center">
         {ITEMS.map(({ id, Icon, label }) => {
-          const isActive = currentId === id;
-          const badge =
-            id === "TRADE" ? tradesBadge : id === "REFERRAL" ? referralBadge : 0;
+          const isActive = currentId === id || (id === "PROFILE" && currentId === "REFERRAL");
+          const badge = id === "TRADE" ? tradesBadge : 0;
 
           return (
             <li key={id} className="h-full">
@@ -57,31 +55,31 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 aria-current={isActive ? "page" : undefined}
                 className={`relative w-full h-full flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 ${
                   isActive
-                    ? "text-cyan-400 font-bold"
+                    ? "text-[#f0b90b] font-bold"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
               >
                 {isActive && (
-                  <span className="absolute top-0 inset-x-3 h-0.5 rounded-full bg-cyan-400" />
+                  <span className="absolute top-0 inset-x-4 h-0.5 rounded-full bg-[#f0b90b]" />
                 )}
                 <div className="relative">
                   <Icon
-                    className={`w-4 h-4 transition-transform ${
-                      isActive ? "scale-110 text-cyan-400" : ""
+                    className={`w-5 h-5 transition-transform ${
+                      isActive ? "scale-105 text-[#f0b90b]" : "text-slate-400"
                     }`}
                   />
                   {badge > 0 && (
-                    <span className="absolute -top-1.5 -right-3 min-w-[14px] h-[14px] px-0.5 rounded-full bg-amber-500 text-slate-950 text-[8px] font-black flex items-center justify-center">
+                    <span className="absolute -top-1.5 -right-3 min-w-[14px] h-[14px] px-0.5 rounded-full bg-rose-500 text-white text-[8px] font-black flex items-center justify-center">
                       {badge > 99 ? "99+" : badge}
                     </span>
                   )}
                   {id === "MIKE_AI" && !isActive && (
-                    <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#f0b90b] animate-pulse" />
                   )}
                 </div>
                 <span
-                  className={`text-[10px] tracking-tight leading-none ${
-                    isActive ? "font-bold text-cyan-400" : "font-medium"
+                  className={`text-[10px] tracking-tight leading-none mt-0.5 ${
+                    isActive ? "font-bold text-[#f0b90b]" : "font-medium text-slate-400"
                   }`}
                 >
                   {label}

@@ -774,7 +774,7 @@ function TradingPlatformContent() {
                 }}
                 onNavigateToReferrals={() => setSection("REFERRAL")}
                 onNavigateToMike={() => setSection("MIKE_AI")}
-                onOpenDeposit={() => handleOpenDepositModal("DEPOSIT")}
+                onOpenDeposit={(tab) => handleOpenDepositModal(tab || "DEPOSIT")}
                 onCloseTrade={handleCloseTrade}
               />
             </div>

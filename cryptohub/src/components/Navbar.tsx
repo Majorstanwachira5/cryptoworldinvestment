@@ -27,6 +27,8 @@ import {
   ShieldCheck,
   Sliders,
   DollarSign,
+  Headphones,
+  Bell,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -176,7 +178,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   REAL
                 </span>
                 <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black tracking-widest uppercase rounded-full bg-gradient-to-r from-amber-500/20 via-yellow-400/20 to-amber-500/20 text-amber-300 border border-amber-400/40 shadow-xs">
-                  <span className="text-yellow-400 text-[10px]">★</span> GOLD TIER
+                  <span className="text-amber-400 text-[10px]">★</span> VIP TIER
                 </span>
               </div>
               <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-1">
@@ -221,9 +223,27 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* ================= RIGHT SECTION: Financial Strip + Actions + Dropdowns ================= */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Compact Financial Status Widget */}
-          <div className="flex items-center gap-2 sm:gap-3 bg-slate-900/90 dark:bg-slate-900/90 light:bg-slate-100 border border-slate-800/90 dark:border-slate-800/90 light:border-slate-200 rounded-xl px-2.5 sm:px-3 py-1.5 shadow-inner">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Mobile Fast Navigation: Headset (Support / Mike AI) & Bell (Ledger) */}
+          <div className="flex md:hidden items-center gap-1">
+            <button
+              onClick={() => onSelectSection?.("MIKE_AI")}
+              className="flex items-center justify-center h-8 w-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-all active:scale-95"
+              title="Customer Support & Mike AI"
+            >
+              <Headphones className="w-4 h-4 text-slate-300" />
+            </button>
+            <button
+              onClick={onOpenLedger}
+              className="flex items-center justify-center h-8 w-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-all active:scale-95"
+              title="Transaction Ledger & Notifications"
+            >
+              <Bell className="w-4 h-4 text-slate-300" />
+            </button>
+          </div>
+
+          {/* Compact Financial Status Widget (Desktop) */}
+          <div className="hidden md:flex items-center gap-2 sm:gap-3 bg-slate-900/90 dark:bg-slate-900/90 light:bg-slate-100 border border-slate-800/90 dark:border-slate-800/90 light:border-slate-200 rounded-xl px-2.5 sm:px-3 py-1.5 shadow-inner">
             {/* Available Balance */}
             <div className="flex flex-col min-w-0">
               <span className="text-[8px] sm:text-[9px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
@@ -322,8 +342,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Action CTAs: Deposit & Withdraw */}
-          <div className="flex items-center gap-1.5">
+          {/* Action CTAs: Deposit & Withdraw (Desktop) */}
+          <div className="hidden md:flex items-center gap-1.5">
             <button
               onClick={() => onOpenDeposit("DEPOSIT")}
               className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-400 shrink-0"

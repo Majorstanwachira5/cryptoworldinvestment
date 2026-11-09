@@ -154,11 +154,11 @@ export const ReferralPanel: React.FC<ReferralPanelProps> = ({
                   REAL CAPITAL
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs">
-                  ★ GOLD REWARD
+                  ★ VIP REWARD
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Earn <span className="text-amber-400 font-bold">$30.00 USDT Gold Bonus</span> per qualified referral credited to your REAL ledger + unlock Level 2 (&gt;10 invites) &amp; Level 1 (&gt;20 invites).
+                Earn <span className="text-amber-400 font-bold">$30.00 USDT Direct Bonus</span> per qualified referral credited to your REAL ledger + unlock Level 2 (&gt;10 invites) &amp; Level 1 (&gt;20 invites).
               </p>
             </div>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Balance,
   User,
@@ -13,18 +13,27 @@ import {
 import { DisplayCurrency, formatMoney, formatSignedMoney } from "@/lib/fx/rates";
 import { authFetch } from "@/lib/auth/session";
 import {
-  TrendingUp,
+  Search,
+  Eye,
+  EyeOff,
+  Wallet,
+  CreditCard,
   Gift,
+  LayoutGrid,
+  ArrowDown,
+  X,
+  Sparkles,
   ArrowRight,
   ShieldCheck,
-  Activity,
+  Award,
   Layers,
-  Sparkles,
-  ArrowDownToLine,
+  ChevronRight,
+  TrendingUp,
+  Activity,
   Check,
   Copy,
-  ChevronRight,
-  Award,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 interface HomeDashboardProps {
@@ -39,7 +48,7 @@ interface HomeDashboardProps {
   onNavigateToTrade: (accountType?: AccountType, asset?: MarketAsset) => void;
   onNavigateToReferrals: () => void;
   onNavigateToMike: () => void;
-  onOpenDeposit: () => void;
+  onOpenDeposit: (tab?: "DEPOSIT" | "WITHDRAW") => void;
   onCloseTrade: (tradeId: string, exitPrice: number) => void;
 }
 
@@ -57,7 +66,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onOpenDeposit,
   onCloseTrade,
 }) => {
+  const [showBalance, setShowBalance] = useState(true);
+  const [dismissBanner, setDismissBanner] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryTab, setCategoryTab] = useState<"hot" | "favorites" | "options">("hot");
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [favorites, setFavorites] = useState<string[]>(["BTC/USDT", "ETH/USDT", "SOL/USDT"]);
   const [copiedCode, setCopiedCode] = useState(false);
+
   const [levelInfo, setLevelInfo] = useState<{
     effectiveLevel: number;
     cumulativeDeposits: number;
@@ -93,12 +109,53 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const realDeposited = realBal?.totalDeposited ?? 0;
 
   const activeTrades = trades.filter((t) => t.status === "OPEN");
-  const closedTrades = trades.filter((t) => t.status === "CLOSED");
 
-  const totalClosed = closedTrades.length;
-  const winningTrades = closedTrades.filter((t) => t.pnl > 0).length;
-  const winRate = totalClosed > 0 ? (winningTrades / totalClosed) * 100 : 0;
-  const netRealizedPnl = closedTrades.reduce((acc, t) => acc + t.pnl, 0);
+  // Filtering assets based on category tab & search
+  const filteredAssets = useMemo(() => {
+    return assets.filter((asset) => {
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        return (
+          asset.symbol.toLowerCase().includes(query) ||
+          asset.assetClass.toLowerCase().includes(query)
+        );
+      }
+      if (categoryTab === "favorites") {
+        return favorites.includes(asset.symbol);
+      }
+      if (categoryTab === "options") {
+        return asset.assetClass === "FOREX";
+      }
+      // "hot" tab shows crypto pairs, prioritizing BTC, ETH, SOL
+      return asset.assetClass === "CRYPTO" || true;
+    });
+  }, [assets, categoryTab, searchQuery, favorites]);
+
+  const getCoinBadge = (symbol: string) => {
+    const clean = symbol.replace("/USDT", "").replace("USDT", "").toUpperCase();
+    if (clean.includes("BTC")) {
+      return { bg: "bg-[#f7931a]", text: "text-white font-black", icon: "₿" };
+    }
+    if (clean.includes("ETH")) {
+      return { bg: "bg-[#627eea]", text: "text-white font-bold", icon: "♦" };
+    }
+    if (clean.includes("SOL")) {
+      return { bg: "bg-gradient-to-tr from-[#14f195] to-[#9945ff]", text: "text-white font-black", icon: "S" };
+    }
+    if (clean.includes("BNB")) {
+      return { bg: "bg-[#f3ba2f]", text: "text-slate-950 font-black", icon: "◆" };
+    }
+    if (clean.includes("XRP")) {
+      return { bg: "bg-slate-800 border border-slate-600", text: "text-white font-black", icon: "✕" };
+    }
+    if (clean.includes("DOGE")) {
+      return { bg: "bg-[#c2a633]", text: "text-slate-950 font-black", icon: "Ð" };
+    }
+    if (clean.includes("EUR") || clean.includes("GBP") || clean.includes("JPY")) {
+      return { bg: "bg-blue-600", text: "text-white font-black", icon: "€" };
+    }
+    return { bg: "bg-cyan-600", text: "text-white font-bold", icon: clean.slice(0, 2) };
+  };
 
   const copyReferralCode = async () => {
     if (!referrals?.code) return;
@@ -112,465 +169,519 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   };
 
   return (
-    <div className="space-y-3.5 w-full mx-auto pb-8">
-      {/* 1. Welcome & Account Greeting Card */}
-      <div className="bg-gradient-to-r from-[#101726] via-[#121c2e] to-[#0c111c] border border-slate-800 rounded-xl p-4 sm:p-5 relative overflow-hidden">
-        {/* Subtle Luxury Gold Top Accent Hairline */}
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400/50 to-transparent pointer-events-none" />
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
-                Institutional Live Trading Engine Online
+    <div className="space-y-3.5 w-full max-w-[1400px] mx-auto pb-16">
+      {/* 1. Top Notice / App Download Banner (Dismissable) */}
+      {!dismissBanner && (
+        <div className="flex items-center justify-between bg-[#121620] border border-slate-800/90 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 shadow-md">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-6 w-6 rounded-lg bg-gradient-to-tr from-[#f0b90b] to-amber-500 flex items-center justify-center text-slate-950 font-black text-xs shrink-0 shadow">
+              ⚡
+            </div>
+            <span className="truncate text-xs sm:text-sm font-medium">
+              To access additional features, click to download the app.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 ml-2">
+            <button
+              onClick={() => alert("CryptoHub Android PWA / APK package is configured. Add to Home Screen via browser menu for full native installation.")}
+              className="h-7 w-7 rounded-full bg-[#f0b90b] hover:bg-[#d8a406] text-slate-950 flex items-center justify-center font-black transition-all active:scale-95 shadow"
+              title="Download Android App"
+            >
+              <ArrowDown className="w-4 h-4 stroke-[2.5]" />
+            </button>
+            <button
+              onClick={() => setDismissBanner(true)}
+              className="text-slate-400 hover:text-white p-1 transition-colors"
+              title="Dismiss notice"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Sleek Mobile Search Bar */}
+      <div className="relative">
+        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search crypto pairs (BTC, ETH, SOL...)"
+          className="w-full bg-[#151922] border border-slate-800/80 rounded-full pl-9 pr-4 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#f0b90b]/50 transition-colors"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* 3. Total Balance Card (Authentic Exchange Layout) */}
+      <div className="bg-[#121620] border border-slate-800/90 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2 text-slate-400 text-xs sm:text-sm font-medium">
+              <span>Total Balance</span>
+              <button
+                onClick={() => setShowBalance((s) => !s)}
+                className="text-slate-400 hover:text-slate-200 transition-colors p-0.5 focus:outline-none"
+                title={showBalance ? "Hide balance" : "Show balance"}
+              >
+                {showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              </button>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl sm:text-4xl font-extrabold text-[#f3ba2f] font-mono tracking-tight">
+                {showBalance
+                  ? formatMoney(realAvailable, currency).replace("USDT", "").replace("$", "").trim()
+                  : "••••••"}
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-slate-400">
+                {currency === "USD" ? "USDT" : currency}
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              Welcome back, <span className="text-cyan-400">{user?.name || "Trader"}</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-              REAL-only TRC20 USDT double-entry ledger active. Monitor your portfolio and execute orders.
+          </div>
+
+          {/* Gold Pill Deposit Button */}
+          <button
+            onClick={() => onOpenDeposit("DEPOSIT")}
+            className="bg-[#e8b85c] hover:bg-[#dfad50] text-[#1c180e] font-black px-6 py-2.5 rounded-full text-xs sm:text-sm shadow-md transition-all active:scale-95 hover:brightness-105 shrink-0"
+          >
+            Deposit
+          </button>
+        </div>
+
+        {/* Secondary Account Metrics Strip */}
+        <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-800/80 text-[11px]">
+          <div>
+            <span className="text-slate-500 uppercase block font-semibold text-[9px]">Equity</span>
+            <span className="font-mono font-bold text-emerald-400">
+              {showBalance ? formatMoney(realEquity, currency) : "••••••"}
+            </span>
+          </div>
+          <div>
+            <span className="text-slate-500 uppercase block font-semibold text-[9px]">Free Margin</span>
+            <span className="font-mono font-bold text-slate-300">
+              {showBalance ? formatMoney(realBal?.freeMargin ?? realAvailable, currency) : "••••••"}
+            </span>
+          </div>
+          <div>
+            <span className="text-slate-500 uppercase block font-semibold text-[9px]">Deposited</span>
+            <span className="font-mono font-bold text-slate-300">
+              {showBalance ? formatMoney(realDeposited, currency) : "••••••"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Four Circular Quick Action Buttons (Deposit | Withdrawal | Invite | More) */}
+      <div className="grid grid-cols-4 gap-2 sm:gap-4 py-2">
+        {/* Deposit */}
+        <button
+          onClick={() => onOpenDeposit("DEPOSIT")}
+          className="flex flex-col items-center justify-center gap-1.5 group active:scale-95 transition-transform"
+        >
+          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#1c2230] group-hover:bg-[#252c3d] border border-slate-700/60 flex items-center justify-center shadow-lg transition-colors">
+            <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
+          </div>
+          <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">
+            Deposit
+          </span>
+        </button>
+
+        {/* Withdrawal */}
+        <button
+          onClick={() => onOpenDeposit("WITHDRAW")}
+          className="flex flex-col items-center justify-center gap-1.5 group active:scale-95 transition-transform"
+        >
+          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#1c2230] group-hover:bg-[#252c3d] border border-slate-700/60 flex items-center justify-center shadow-lg transition-colors">
+            <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
+          </div>
+          <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">
+            Withdrawal
+          </span>
+        </button>
+
+        {/* Invite */}
+        <button
+          onClick={onNavigateToReferrals}
+          className="flex flex-col items-center justify-center gap-1.5 group active:scale-95 transition-transform"
+        >
+          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#1c2230] group-hover:bg-[#252c3d] border border-slate-700/60 flex items-center justify-center shadow-lg transition-colors">
+            <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
+          </div>
+          <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">
+            Invite
+          </span>
+        </button>
+
+        {/* More */}
+        <button
+          onClick={() => setIsMoreOpen((v) => !v)}
+          className="flex flex-col items-center justify-center gap-1.5 group active:scale-95 transition-transform"
+        >
+          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#1c2230] group-hover:bg-[#252c3d] border border-slate-700/60 flex items-center justify-center shadow-lg transition-colors">
+            <LayoutGrid className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
+          </div>
+          <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">
+            More
+          </span>
+        </button>
+      </div>
+
+      {/* 5. One-Click Copy Trading Promotional Banner (Futuristic Hologram) */}
+      <div
+        onClick={onNavigateToMike}
+        role="button"
+        tabIndex={0}
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#030a1c] via-[#081533] to-[#040c24] border border-cyan-900/40 hover:border-cyan-500/50 p-4 sm:p-5 cursor-pointer shadow-xl transition-all group"
+      >
+        <div className="flex items-center justify-between gap-4">
+          {/* Holographic Glowing Bitcoin Core */}
+          <div className="relative flex items-center justify-center shrink-0 w-20 h-20 sm:w-24 sm:h-24">
+            <div className="absolute inset-0 rounded-full bg-cyan-500/20 blur-xl group-hover:bg-cyan-500/30 transition-all" />
+            <div className="absolute inset-1 rounded-full border border-cyan-400/40 border-dashed animate-spin" style={{ animationDuration: "12s" }} />
+            <div className="absolute inset-3 rounded-full border border-cyan-300/60 shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-tr from-cyan-600 via-blue-500 to-cyan-400 flex items-center justify-center text-slate-950 font-black text-lg sm:text-xl shadow-lg shadow-cyan-500/50">
+              ₿
+            </div>
+          </div>
+
+          {/* Copy Trading Information */}
+          <div className="flex-1 min-w-0 pr-8">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-cyan-400 mb-0.5">
+              <Sparkles className="w-3 h-3 text-cyan-400" />
+              <span>QUANTITATIVE AUTO-TRADE</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-extrabold text-white tracking-tight leading-tight group-hover:text-cyan-200 transition-colors">
+              One-click copy trading
+            </h3>
+            <p className="text-xs sm:text-sm text-cyan-300 font-medium mt-0.5 flex items-center gap-1">
+              <span className="text-cyan-400 font-bold">&gt;&gt;&gt;</span>
+              <span>easily generate profits.</span>
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="px-2.5 py-1 rounded-lg text-xs font-black uppercase bg-gradient-to-r from-amber-950/90 via-yellow-950/60 to-amber-950/90 text-amber-300 border border-amber-500/50 flex items-center gap-1.5 shadow-sm">
-              <Award className="w-3.5 h-3.5 text-amber-400" />
-              {levelInfo && levelInfo.effectiveLevel > 0
-                ? `Level ${levelInfo.effectiveLevel} • Gold ($${levelInfo.dailyEarningRange?.[0]}–$${levelInfo.dailyEarningRange?.[1]}/day)`
-                : "Institutional Gold (<$300 Deposit)"}
+          {/* 1/2 Indicator Badge */}
+          <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-[#c9a762] text-slate-950 shadow-sm">
+              1/2
             </span>
-            <span className="px-2.5 py-1 rounded-lg text-xs font-black uppercase bg-emerald-950/80 text-emerald-400 border border-emerald-700/60 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              KYC {user?.kycStatus || "VERIFIED"}
-            </span>
-          </div>
-        </div>
-
-        {/* Quick Action Navigation Bar — 4 Balanced Mobile/Desktop Actions */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 pt-4 border-t border-slate-800/80">
-          <button
-            onClick={() => onNavigateToTrade("REAL")}
-            className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-slate-950 font-black py-2.5 px-3 rounded-xl text-xs transition-all active:scale-95 shadow-md shadow-emerald-500/20"
-          >
-            <span>Trade Live</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={onOpenDeposit}
-            className="flex items-center justify-center gap-2 bg-slate-800/90 hover:bg-slate-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition-all active:scale-95 border border-slate-700"
-          >
-            <ArrowDownToLine className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Deposit USDT</span>
-          </button>
-          <button
-            onClick={onNavigateToReferrals}
-            className="flex items-center justify-center gap-2 bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 font-bold py-2.5 px-3 rounded-xl text-xs transition-all active:scale-95 border border-amber-700/50"
-          >
-            <Gift className="w-3.5 h-3.5 text-amber-400" />
-            <span>Invite ($30 USDT)</span>
-          </button>
-          <button
-            onClick={onNavigateToMike}
-            className="flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-900/60 to-purple-900/60 hover:from-indigo-800/70 hover:to-purple-800/70 text-cyan-300 font-bold py-2.5 px-3 rounded-xl text-xs transition-all active:scale-95 border border-indigo-700/50"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Ask Mike AI</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Account Balance & Level Status (REAL only) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Real Account Balance Card */}
-        <div className="lg:col-span-7 bg-[#111724] border border-emerald-900/40 hover:border-amber-500/40 rounded-2xl p-4 sm:p-5 shadow-lg transition-colors relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-emerald-950 border border-emerald-700/60 flex items-center justify-center text-emerald-400">
-                <Activity className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-black text-sm text-white">REAL LIVE ACCOUNT</h3>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black">
-                    ★ GOLD
-                  </span>
-                </div>
-                <span className="text-[10px] uppercase font-bold text-emerald-400">
-                  TRC20 USDT Double-Entry Ledger
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={onOpenDeposit}
-              className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black transition-all shadow"
-            >
-              <ArrowDownToLine className="w-3.5 h-3.5" />
-              Deposit / Withdraw
-            </button>
-          </div>
-
-          <div className="mb-3">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
-              Live Available Capital
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              {formatMoney(realAvailable, currency)}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-800/80 text-xs">
-            <div>
-              <span className="text-[10px] uppercase text-slate-500 block">Equity</span>
-              <span className="font-bold text-emerald-400">{formatMoney(realEquity, currency)}</span>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase text-slate-500 block">Total Deposited</span>
-              <span className="font-bold text-slate-200">{formatMoney(realDeposited, currency)}</span>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase text-slate-500 block">Free Margin</span>
-              <span className="font-bold text-slate-200">
-                {formatMoney(realBal?.freeMargin ?? realAvailable, currency)}
-              </span>
-            </div>
-          </div>
-
-          <button
-            onClick={() => onNavigateToTrade("REAL")}
-            className="w-full mt-4 bg-slate-800/80 hover:bg-slate-700 text-emerald-400 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all"
-          >
-            <span>Open Live Trading Terminal</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Auto-Trade Level & Wednesday Bonus Card */}
-        <div className="lg:col-span-5 bg-[#111724] border border-amber-900/40 rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-amber-950 border border-amber-700/60 flex items-center justify-center text-amber-400">
-                  <Award className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-black text-sm text-white">AUTO-TRADE TIER</h3>
-                  <span className="text-[10px] uppercase font-bold text-amber-400">
-                    Server-Derived From Confirmed Deposits
-                  </span>
-                </div>
-              </div>
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                {levelInfo && levelInfo.effectiveLevel > 0 ? `LEVEL ${levelInfo.effectiveLevel}` : "UNRANKED"}
-              </span>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
-                <span className="text-slate-400">Level 3 (≥$300 Deposit)</span>
-                <span className="font-mono font-bold text-emerald-400">$5.00 – $8.00 / day</span>
-              </div>
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
-                <span className="text-slate-400">Level 2 (≥$500 or L3 + &gt;10 Ref)</span>
-                <span className="font-mono font-bold text-cyan-400">$8.00 – $14.00 / day</span>
-              </div>
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
-                <span className="text-slate-400">Level 1 (≥$600 or L3 + &gt;20 Ref)</span>
-                <span className="font-mono font-bold text-amber-400">$10.00 – $18.00 / day</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Wednesday Loyalty Bonus (L3–L1):</span>
-            <span className="font-bold text-emerald-400">+$1.00 USDT / Wed</span>
           </div>
         </div>
       </div>
 
-      {/* 3. Live Market Ticker Grid */}
-      <div className="bg-[#111724] border border-slate-800 rounded-2xl p-4 shadow-lg">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-cyan-400" />
-            <h3 className="font-extrabold text-xs sm:text-sm text-white uppercase tracking-wider">
-              Live Market Tickers
-            </h3>
-          </div>
-          <span className="text-[11px] text-slate-400">Tap any instrument to trade</span>
+      {/* 6. Market Category Tabs & Section Header */}
+      <div className="pt-2">
+        <div className="flex items-center gap-6 border-b border-slate-800 pb-2">
+          <button
+            onClick={() => setCategoryTab("hot")}
+            className={`text-sm sm:text-base font-bold transition-colors relative ${
+              categoryTab === "hot"
+                ? "text-[#f0b90b]"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            Hot
+            {categoryTab === "hot" && (
+              <span className="absolute -bottom-2 inset-x-0 h-0.5 bg-[#f0b90b] rounded-full" />
+            )}
+          </button>
+
+          <button
+            onClick={() => setCategoryTab("favorites")}
+            className={`text-sm sm:text-base font-bold transition-colors relative ${
+              categoryTab === "favorites"
+                ? "text-[#f0b90b]"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            Self Service
+            {categoryTab === "favorites" && (
+              <span className="absolute -bottom-2 inset-x-0 h-0.5 bg-[#f0b90b] rounded-full" />
+            )}
+          </button>
+
+          <button
+            onClick={() => setCategoryTab("options")}
+            className={`text-sm sm:text-base font-bold transition-colors relative ${
+              categoryTab === "options"
+                ? "text-[#f0b90b]"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            Options
+            {categoryTab === "options" && (
+              <span className="absolute -bottom-2 inset-x-0 h-0.5 bg-[#f0b90b] rounded-full" />
+            )}
+          </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-          {assets.map((asset) => {
+        <div className="mt-2 text-xs font-bold text-[#f0b90b]">
+          {categoryTab === "options" ? "Options & Commodities" : categoryTab === "favorites" ? "Watchlist" : "Options"}
+        </div>
+      </div>
+
+      {/* 7. Market Table Header */}
+      <div className="grid grid-cols-12 text-slate-400 text-xs font-semibold px-2 py-1.5 select-none">
+        <div className="col-span-5 flex items-center gap-1">
+          <span>Crypto</span>
+          <span className="text-[10px] text-slate-500">↕</span>
+        </div>
+        <div className="col-span-4 text-right flex items-center justify-end gap-1">
+          <span>Last Price</span>
+          <span className="text-[10px] text-slate-500">↕</span>
+        </div>
+        <div className="col-span-3 text-right flex items-center justify-end gap-1">
+          <span>24h %</span>
+          <span className="text-[10px] text-slate-500">↕</span>
+        </div>
+      </div>
+
+      {/* 8. Crypto Coin List Rows */}
+      <div className="space-y-1">
+        {filteredAssets.length === 0 ? (
+          <div className="text-center py-10 bg-[#121620] rounded-xl border border-dashed border-slate-800 text-slate-400 text-xs">
+            No instruments found matching &quot;{searchQuery}&quot;.
+          </div>
+        ) : (
+          filteredAssets.map((asset) => {
             const isPositive = asset.change24h >= 0;
+            const badge = getCoinBadge(asset.symbol);
+            const symbolBase = asset.symbol.replace("/USDT", "").replace("USDT", "");
+            const quoteCurrency = asset.assetClass === "FOREX" ? "" : "USDT";
+
             return (
-              <button
+              <div
                 key={asset.symbol}
                 onClick={() => onNavigateToTrade("REAL", asset)}
-                className="bg-slate-950/70 hover:bg-slate-900 border border-slate-800 hover:border-cyan-500/40 p-2.5 rounded-xl text-left transition-all active:scale-95 group"
+                role="button"
+                tabIndex={0}
+                className="grid grid-cols-12 items-center bg-[#121620]/60 hover:bg-[#151c2a] border border-slate-800/60 hover:border-slate-700/80 rounded-xl px-2.5 py-3 transition-all active:scale-[0.99] cursor-pointer group"
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-extrabold text-xs text-white group-hover:text-cyan-400 transition-colors">
-                    {asset.symbol}
+                {/* Coin Icon & Name */}
+                <div className="col-span-5 flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`h-8 w-8 rounded-full ${badge.bg} ${badge.text} flex items-center justify-center text-xs shrink-0 shadow`}
+                  >
+                    {badge.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1">
+                      <span className="font-extrabold text-xs sm:text-sm text-white group-hover:text-cyan-400 transition-colors truncate">
+                        {symbolBase}
+                      </span>
+                      {quoteCurrency && (
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {quoteCurrency}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-mono hidden xs:block">
+                      {asset.assetClass}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Last Price */}
+                <div className="col-span-4 text-right pr-2">
+                  <div className="font-mono font-bold text-xs sm:text-sm text-white group-hover:text-cyan-200 transition-colors">
+                    {asset.currentPrice.toLocaleString("en-US", {
+                      minimumFractionDigits: asset.digits,
+                      maximumFractionDigits: asset.digits,
+                    })}
+                  </div>
+                </div>
+
+                {/* 24h % Pill Badge */}
+                <div className="col-span-3 text-right">
+                  <span
+                    className={`inline-block font-mono font-bold text-xs px-2.5 py-1.5 rounded-lg text-white shadow-xs min-w-[70px] text-center ${
+                      isPositive ? "bg-[#10b981]" : "bg-[#eb4b5f]"
+                    }`}
+                  >
+                    {isPositive ? "+" : ""}
+                    {asset.change24h.toFixed(2)}%
                   </span>
-                  <span className="text-[9px] font-bold px-1 rounded bg-slate-800 text-slate-400">
-                    {asset.assetClass}
-                  </span>
                 </div>
-                <div className="text-xs font-mono font-bold text-slate-200">
-                  ${asset.currentPrice.toLocaleString("en-US", {
-                    minimumFractionDigits: asset.digits,
-                    maximumFractionDigits: asset.digits,
-                  })}
-                </div>
-                <div
-                  className={`text-[10px] font-semibold flex items-center mt-0.5 ${
-                    isPositive ? "text-emerald-400" : "text-rose-400"
-                  }`}
-                >
-                  {isPositive ? "+" : ""}
-                  {asset.change24h.toFixed(2)}%
-                </div>
-              </button>
+              </div>
             );
-          })}
-        </div>
+          })
+        )}
       </div>
 
-      {/* 4. Active Trading Positions & Realised Performance */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Active Positions Card */}
-        <div className="lg:col-span-7 bg-[#111724] border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-amber-400" />
-                <h3 className="font-extrabold text-xs sm:text-sm text-white uppercase tracking-wider">
-                  Open Positions (REAL)
-                </h3>
-              </div>
-              <button
-                onClick={() => onNavigateToTrade("REAL")}
-                className="text-xs text-cyan-400 hover:underline font-bold"
-              >
-                Manage All
-              </button>
-            </div>
-
-            {activeTrades.length === 0 ? (
-              <div className="text-center py-8 bg-slate-950/50 rounded-xl border border-dashed border-slate-800">
-                <Layers className="w-8 h-8 text-slate-700 mx-auto mb-2" />
-                <p className="text-xs text-slate-400 font-medium">No open positions on REAL account.</p>
-                <button
-                  onClick={() => onNavigateToTrade("REAL")}
-                  className="mt-3 inline-flex items-center gap-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/40 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                >
-                  <span>Open New Trade</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {activeTrades.slice(0, 3).map((trade) => {
-                  const isLong = trade.direction === "LONG";
-                  const isProfit = trade.pnl >= 0;
-                  return (
-                    <div
-                      key={trade.id}
-                      className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-2"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span
-                          className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
-                            isLong
-                              ? "bg-emerald-950 text-emerald-400 border-emerald-800"
-                              : "bg-rose-950 text-rose-400 border-rose-800"
-                          }`}
-                        >
-                          {trade.direction}
-                        </span>
-                        <div>
-                          <div className="font-extrabold text-xs text-white">{trade.symbol}</div>
-                          <div className="text-[10px] text-slate-500">
-                            {trade.size} @ ${trade.entryPrice}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <div
-                          className={`font-black text-xs ${
-                            isProfit ? "text-emerald-400" : "text-rose-400"
-                          }`}
-                        >
-                          {formatSignedMoney(trade.pnl, currency)}
-                        </div>
-                        <button
-                          onClick={() => onCloseTrade(trade.id, trade.currentPrice)}
-                          className="text-[10px] font-bold text-rose-400 hover:text-rose-300 transition-colors"
-                        >
-                          Close Position
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {activeTrades.length > 3 && (
-            <div className="mt-3 text-center text-xs text-slate-400">
-              +{activeTrades.length - 3} more open position(s) in Trade terminal.
-            </div>
-          )}
-        </div>
-
-        {/* Realised Performance Card */}
-        <div className="lg:col-span-5 bg-[#111724] border border-slate-800 rounded-2xl p-4 shadow-lg">
+      {/* 9. Open Positions Section (Collapsible / Active) */}
+      {activeTrades.length > 0 && (
+        <div className="bg-[#121620] border border-slate-800 rounded-2xl p-4 shadow-lg mt-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-emerald-400" />
+              <Layers className="w-4 h-4 text-[#f0b90b]" />
               <h3 className="font-extrabold text-xs sm:text-sm text-white uppercase tracking-wider">
-                Trading Record (REAL)
+                Open Positions ({activeTrades.length})
               </h3>
             </div>
+            <button
+              onClick={() => onNavigateToTrade("REAL")}
+              className="text-xs text-cyan-400 hover:underline font-bold"
+            >
+              Open Terminal
+            </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3">
-              <span className="text-[9px] uppercase font-bold text-slate-500">Win Rate</span>
-              <div
-                className={`text-xl font-black mt-0.5 ${
-                  winRate >= 50 ? "text-emerald-400" : "text-slate-300"
-                }`}
-              >
-                {totalClosed > 0 ? `${winRate.toFixed(1)}%` : "—"}
-              </div>
-              <span className="text-[10px] text-slate-500">
-                {winningTrades} wins / {totalClosed - winningTrades} losses
-              </span>
-            </div>
+          <div className="space-y-2">
+            {activeTrades.map((trade) => {
+              const isLong = trade.direction === "LONG";
+              const isProfit = trade.pnl >= 0;
+              return (
+                <div
+                  key={trade.id}
+                  className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-2"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
+                        isLong
+                          ? "bg-emerald-950 text-emerald-400 border-emerald-800"
+                          : "bg-rose-950 text-rose-400 border-rose-800"
+                      }`}
+                    >
+                      {trade.direction}
+                    </span>
+                    <div>
+                      <div className="font-extrabold text-xs text-white">{trade.symbol}</div>
+                      <div className="text-[10px] text-slate-500">
+                        {trade.size} @ ${trade.entryPrice}
+                      </div>
+                    </div>
+                  </div>
 
-            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3">
-              <span className="text-[9px] uppercase font-bold text-slate-500">Realised PnL</span>
-              <div
-                className={`text-xl font-black mt-0.5 ${
-                  netRealizedPnl >= 0 ? "text-emerald-400" : "text-rose-400"
-                }`}
-              >
-                {formatSignedMoney(netRealizedPnl, currency)}
-              </div>
-              <span className="text-[10px] text-slate-500">Total {totalClosed} closed</span>
-            </div>
-          </div>
-
-          <div className="bg-slate-950/60 rounded-xl p-3 border border-slate-800/80 text-[11px] text-slate-400 space-y-1">
-            <div className="flex items-center justify-between">
-              <span>Risk Management Model:</span>
-              <span className="font-bold text-white">Algorithmic Risk Governance</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Min Required Reward:Risk:</span>
-              <span className="font-bold text-cyan-400">1:1.5</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Max Capital Risk Per Trade:</span>
-              <span className="font-bold text-slate-200">2.0%</span>
-            </div>
+                  <div className="text-right">
+                    <div
+                      className={`font-black text-xs font-mono ${
+                        isProfit ? "text-emerald-400" : "text-rose-400"
+                      }`}
+                    >
+                      {formatSignedMoney(trade.pnl, currency)}
+                    </div>
+                    <button
+                      onClick={() => onCloseTrade(trade.id, trade.currentPrice)}
+                      className="text-[10px] font-bold text-rose-400 hover:text-rose-300 transition-colors"
+                    >
+                      Close Position
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* 5. Referral Overview & Risk Model Educational Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-        {/* Referral Program Overview Card */}
-        <div className="bg-[#111724] border border-slate-800 hover:border-amber-500/40 rounded-xl p-4 sm:p-5 transition-colors">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-amber-950 border border-amber-700/60 flex items-center justify-center text-amber-400">
-                <Gift className="w-4 h-4" />
+      {/* 10. "More" Quick Sheet Modal */}
+      {isMoreOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 animate-fade-in"
+        >
+          <div className="bg-[#121622] border border-slate-800 rounded-2xl w-full max-w-md p-4 sm:p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="w-5 h-5 text-cyan-400" />
+                <h3 className="font-extrabold text-sm text-white">Platform Services & Actions</h3>
               </div>
-              <div>
-                <h3 className="font-black text-sm text-white">REFERRAL PROGRAM</h3>
-                <span className="text-[10px] font-bold text-amber-400">
-                  $30.00 USDT Real Reward Per Qualified Referral
+              <button
+                onClick={() => setIsMoreOpen(false)}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                onClick={() => {
+                  setIsMoreOpen(false);
+                  onNavigateToMike();
+                }}
+                className="bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 p-3 rounded-xl text-left transition-colors flex flex-col gap-1"
+              >
+                <Sparkles className="w-4 h-4 text-cyan-400" />
+                <span className="font-bold text-xs text-white">Mike AI Assistant</span>
+                <span className="text-[10px] text-slate-400">Quantitative insights & trading</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMoreOpen(false);
+                  onNavigateToReferrals();
+                }}
+                className="bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 p-3 rounded-xl text-left transition-colors flex flex-col gap-1"
+              >
+                <Gift className="w-4 h-4 text-amber-400" />
+                <span className="font-bold text-xs text-white">Invite & Bonus</span>
+                <span className="text-[10px] text-slate-400">$30.00 USDT per qualified friend</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMoreOpen(false);
+                  onOpenDeposit("DEPOSIT");
+                }}
+                className="bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 p-3 rounded-xl text-left transition-colors flex flex-col gap-1"
+              >
+                <Wallet className="w-4 h-4 text-emerald-400" />
+                <span className="font-bold text-xs text-white">Deposit USDT</span>
+                <span className="text-[10px] text-slate-400">Instant TRC20 Ledger</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMoreOpen(false);
+                  onOpenDeposit("WITHDRAW");
+                }}
+                className="bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 p-3 rounded-xl text-left transition-colors flex flex-col gap-1"
+              >
+                <CreditCard className="w-4 h-4 text-rose-400" />
+                <span className="font-bold text-xs text-white">Withdraw Funds</span>
+                <span className="text-[10px] text-slate-400">Secure automated payout</span>
+              </button>
+            </div>
+
+            {/* Level Tier Status inside More */}
+            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">Tier Status:</span>
+                <span className="font-bold text-[#f0b90b]">
+                  {levelInfo && levelInfo.effectiveLevel > 0
+                    ? `Level ${levelInfo.effectiveLevel} VIP`
+                    : "Active Trader"}
                 </span>
               </div>
-            </div>
-            <button
-              onClick={onNavigateToReferrals}
-              className="text-xs text-amber-400 hover:underline font-bold"
-            >
-              View Program
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            <div className="bg-slate-950/70 border border-slate-800 rounded-lg p-2.5">
-              <span className="text-[9px] uppercase font-bold text-slate-500">Total Referrals</span>
-              <div className="text-lg font-black text-white">{referrals?.totalReferrals ?? 0}</div>
-            </div>
-            <div className="bg-slate-950/70 border border-slate-800 rounded-lg p-2.5">
-              <span className="text-[9px] uppercase font-bold text-slate-500">Earned Real USDT</span>
-              <div className="text-lg font-black text-emerald-400">
-                ${(referrals?.totalEarnedUsd ?? 0).toFixed(2)}
+              <div className="flex items-center justify-between text-xs mt-1">
+                <span className="text-slate-400">Referral Code:</span>
+                <div className="flex items-center gap-1.5 font-mono text-cyan-400 font-bold">
+                  <span>{referrals?.code || "------"}</span>
+                  <button onClick={copyReferralCode} className="text-slate-400 hover:text-white">
+                    {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-lg p-2">
-            <div className="flex-1 font-mono text-center font-black tracking-widest text-cyan-400 text-sm">
-              {referrals?.code || "------"}
-            </div>
             <button
-              onClick={copyReferralCode}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
+              onClick={() => setIsMoreOpen(false)}
+              className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 rounded-xl text-xs transition-colors"
             >
-              {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedCode ? "Copied" : "Copy Code"}</span>
+              Close
             </button>
           </div>
         </div>
-
-        {/* Quantitative Risk Governance Card */}
-        <div className="bg-[#111724] border border-slate-800 hover:border-cyan-500/40 rounded-xl p-4 sm:p-5 transition-colors">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="h-8 w-8 rounded-lg bg-cyan-950 border border-cyan-700/60 flex items-center justify-center text-cyan-400">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-black text-sm text-white">PORTFOLIO RISK GOVERNANCE</h3>
-              <span className="text-[10px] font-bold text-cyan-400">Automated Protection Rules</span>
-            </div>
-          </div>
-
-          <p className="text-xs text-slate-300 leading-relaxed mb-3">
-            CryptoHub enforces mathematical risk management to protect trader capital against liquidation.
-            All live trades require:
-          </p>
-
-          <ul className="space-y-1.5 text-xs text-slate-400">
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-              <span>Mandatory Stop Loss on all live positions</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-              <span>Minimum 1:1.5 Reward-to-Risk ratio</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-              <span>Position risk strictly capped at 2.0% of balance</span>
-            </li>
-          </ul>
-
-          <div className="mt-3 text-[10px] text-slate-500 italic">
-            Note: Systematic risk models guide capital preservation. Market outcomes carry inherent variance.
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
