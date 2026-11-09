@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
 
   const userId = platformUserId(auth.identity);
   const derivation = RewardEngine.deriveUserLevel(userId);
+  const microTradeStatus = RewardEngine.getMicroTradeStatus(userId);
   const ledger = db.getLedger(userId, "REAL");
   const autoTradeHistory = ledger
     .filter((e) => e.type === "AUTO_TRADE_EARNING")
@@ -32,6 +33,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     success: true,
     derivation,
+    microTradeStatus,
     history: autoTradeHistory,
   });
 }
@@ -81,6 +83,36 @@ export async function POST(request: NextRequest) {
   }
 
   const userId = platformUserId(auth.identity);
+
+  // Micro-Trade execution ($0.20 x 5 sequential base bot trades for all registered users)
+  if (body?.action === "MICRO" || body?.micro) {
+    const microResult = RewardEngine.executeNextMicroTrade(userId, dateOverride);
+    const updatedBalance = db.getBalance(userId, "REAL");
+    const microStatus = RewardEngine.getMicroTradeStatus(userId, dateOverride);
+
+    if (microResult.credited) {
+      AuditService.log({
+        actor: auth.identity.user.email,
+        action: "AUTO_TRADE_MICRO_CREDIT",
+        target: userId,
+        outcome: "SUCCESS",
+        details: {
+          step: microResult.step,
+          amount: microResult.amount,
+          ledgerId: microResult.ledgerId,
+        },
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      micro: true,
+      result: microResult,
+      status: microStatus,
+      balance: updatedBalance,
+    });
+  }
+
   const result = RewardEngine.runDailyAutoTradeForUser(userId, dateOverride);
   const updatedBalance = db.getBalance(userId, "REAL");
 

@@ -142,6 +142,69 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     }
   };
 
+  // Base Daily Micro-Bot State (5 x $0.20 = $1.00/day for all registered accounts)
+  const [microStatus, setMicroStatus] = useState<{
+    today: string;
+    completedCount: number;
+    completedAmount: number;
+    maxDailyAmount: number;
+    maxDailyCount: number;
+    canExecuteNext: boolean;
+    positions: any[];
+  } | null>(null);
+  const [isExecutingMicro, setIsExecutingMicro] = useState(false);
+
+  const fetchMicroStatus = useCallback(() => {
+    authFetch("/api/rewards/auto-trade")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.success && d.microTradeStatus) {
+          setMicroStatus(d.microTradeStatus);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchMicroStatus();
+  }, [fetchMicroStatus, balance?.availableBalance]);
+
+  const handleExecuteMicroTrade = async () => {
+    if (isExecutingMicro) return;
+    setIsExecutingMicro(true);
+    try {
+      const res = await authFetch("/api/rewards/auto-trade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "MICRO" }),
+      });
+      const data = await res.json();
+      if (data?.success && data.result) {
+        if (data.result.credited) {
+          confetti({ particleCount: 50, spread: 55, origin: { y: 0.7 } });
+          fetchMicroStatus();
+          fetchLevels();
+          onRefreshBalance?.();
+        } else {
+          alert(data.result.reason || "Daily base bot limit of $1.00 reached.");
+        }
+      }
+    } catch {
+      // Ignored
+    } finally {
+      setIsExecutingMicro(false);
+    }
+  };
+
+  // Sequentially tick through available micro-trades while user stays on Self Service tab to bring lively updates
+  useEffect(() => {
+    if (categoryTab !== "favorites" || !microStatus?.canExecuteNext || isExecutingMicro) return;
+    const timer = setTimeout(() => {
+      handleExecuteMicroTrade();
+    }, 12000);
+    return () => clearTimeout(timer);
+  }, [categoryTab, microStatus?.canExecuteNext, isExecutingMicro]);
+
   const realBal = balance ?? profile?.real;
   const realAvailable =
     balance?.availableBalance !== undefined && balance.availableBalance !== null
@@ -354,8 +417,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <div>
             <span className="text-[#5c7395] uppercase block font-semibold text-[9px] flex items-center gap-1">
               <span>Withdrawable</span>
-              {(levelInfo?.withdrawableEarnings ?? 0) >= 10 && (
-                <span className="text-[8px] bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 px-1 py-0.2 rounded font-bold">≥$10</span>
+              {(levelInfo?.withdrawableEarnings ?? 0) >= 100 && (
+                <span className="text-[8px] bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 px-1 py-0.2 rounded font-bold">≥$100</span>
               )}
             </span>
             <span className="font-mono font-bold text-[#e2ff3b]">
@@ -528,97 +591,349 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         <div className="mt-2 text-xs font-bold text-[#e2ff3b]">
-          {categoryTab === "options" ? "Options & Forex" : categoryTab === "favorites" ? "Watchlist" : "Options"}
+          {categoryTab === "options" ? "Options & Forex Derivatives" : categoryTab === "favorites" ? "AI Quantitative Bot Live Positions" : "Hot Crypto Markets"}
         </div>
       </div>
 
-      {/* 7. Market Table Header */}
-      <div className="grid grid-cols-12 text-[#7c93b2] text-xs font-semibold px-2 py-1.5 select-none">
-        <div className="col-span-5 flex items-center gap-1">
-          <span>Crypto</span>
-          <span className="text-[10px] text-[#5c7395]">↕</span>
-        </div>
-        <div className="col-span-4 text-right flex items-center justify-end gap-1">
-          <span>Last Price</span>
-          <span className="text-[10px] text-[#5c7395]">↕</span>
-        </div>
-        <div className="col-span-3 text-right flex items-center justify-end gap-1">
-          <span>24h %</span>
-          <span className="text-[10px] text-[#5c7395]">↕</span>
-        </div>
-      </div>
-
-      {/* 8. Crypto Coin List Rows */}
-      <div className="space-y-1">
-        {filteredAssets.length === 0 ? (
-          <div className="text-center py-10 bg-[#071324] rounded-xl border border-dashed border-[#142848] text-[#7c93b2] text-xs">
-            No instruments found matching &quot;{searchQuery}&quot;.
-          </div>
-        ) : (
-          filteredAssets.map((asset) => {
-            const isPositive = asset.change24h >= 0;
-            const badge = getCoinBadge(asset.symbol);
-            const symbolBase = asset.symbol.replace("/USDT", "").replace("USDT", "");
-            const quoteCurrency = asset.assetClass === "FOREX" ? "" : "USDT";
-
-            return (
-              <div
-                key={asset.symbol}
-                onClick={() => onNavigateToTrade("REAL", asset)}
-                role="button"
-                tabIndex={0}
-                className="grid grid-cols-12 items-center bg-[#071324]/85 hover:bg-[#0c1c34] border border-[#122544] hover:border-[#1d4274] rounded-xl px-2.5 py-3 transition-all active:scale-[0.99] cursor-pointer group shadow-sm"
-              >
-                {/* Coin Icon & Name */}
-                <div className="col-span-5 flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`h-8 w-8 rounded-full ${badge.bg} ${badge.text} flex items-center justify-center text-xs shrink-0 shadow`}
-                  >
-                    {badge.icon}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1">
-                      <span className="font-extrabold text-xs sm:text-sm text-white group-hover:text-[#e2ff3b] transition-colors truncate">
-                        {symbolBase}
-                      </span>
-                      {quoteCurrency && (
-                        <span className="text-[10px] text-[#7c93b2] font-medium">
-                          {quoteCurrency}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-[#5c7395] font-mono hidden xs:block">
-                      {asset.assetClass}
-                    </div>
-                  </div>
+      {/* 7. Self Service Category Tab: Institutional Bot Positions (MetaTrader Style) */}
+      {categoryTab === "favorites" ? (
+        <div className="space-y-3.5">
+          {/* Quantitative Bot Control Card */}
+          <div className="bg-[#071324] border border-[#142848] rounded-2xl p-4 shadow-xl relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <h4 className="font-extrabold text-sm sm:text-base text-white tracking-tight">
+                    CWI Quantitative AI Bot • Live Execution
+                  </h4>
                 </div>
-
-                {/* Last Price */}
-                <div className="col-span-4 text-right pr-2">
-                  <div className="font-mono font-bold text-xs sm:text-sm text-white group-hover:text-[#e2ff3b] transition-colors">
-                    {asset.currentPrice.toLocaleString("en-US", {
-                      minimumFractionDigits: asset.digits,
-                      maximumFractionDigits: asset.digits,
-                    })}
-                  </div>
-                </div>
-
-                {/* 24h % Pill Badge */}
-                <div className="col-span-3 text-right">
-                  <span
-                    className={`inline-block font-mono font-bold text-xs px-2.5 py-1.5 rounded-lg text-white shadow-xs min-w-[70px] text-center ${
-                      isPositive ? "bg-[#10b981]" : "bg-[#eb4b5f]"
-                    }`}
-                  >
-                    {isPositive ? "+" : ""}
-                    {asset.change24h.toFixed(2)}%
-                  </span>
-                </div>
+                <p className="text-xs text-[#7c93b2] mt-0.5">
+                  Automated Base Yield: <span className="text-[#e2ff3b] font-bold">$1.00 USDT / day</span> for registered traders (5 micro-trades of $0.20 credited sequentially).
+                </p>
               </div>
-            );
-          })
-        )}
-      </div>
+
+              {/* Progress & Micro-Trade Trigger Button */}
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {microStatus?.canExecuteNext ? (
+                  <button
+                    onClick={handleExecuteMicroTrade}
+                    disabled={isExecutingMicro}
+                    className="w-full sm:w-auto bg-[#e2ff3b] hover:bg-[#d5f32a] text-[#050b14] font-black px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-[#e2ff3b]/20 active:scale-95 transition-all"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>
+                      {isExecutingMicro
+                        ? "Executing AI Trade..."
+                        : `Execute Next Trade (+0.20 USDT) [${microStatus?.completedCount ?? 0}/5]`}
+                    </span>
+                  </button>
+                ) : (
+                  <div className="w-full sm:w-auto text-center px-4 py-2 bg-emerald-950/70 border border-emerald-800/70 text-emerald-400 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-inner">
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>Daily Bot Yield Complete ($1.00 USDT Credited)</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 5-Step Progress Pills */}
+            <div className="mt-3.5 pt-3 border-t border-[#142848]/70">
+              <div className="flex items-center justify-between text-[11px] font-mono text-[#7c93b2] mb-1.5">
+                <span>Daily Bot Progress:</span>
+                <span className="text-[#e2ff3b] font-bold">
+                  ${(microStatus?.completedAmount ?? 0).toFixed(2)} / $1.00 USDT ({microStatus?.completedCount ?? 0}/5 Done)
+                </span>
+              </div>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[1, 2, 3, 4, 5].map((step) => {
+                  const isDone = (microStatus?.completedCount ?? 0) >= step;
+                  const isCurrent = (microStatus?.completedCount ?? 0) + 1 === step;
+                  return (
+                    <div
+                      key={step}
+                      className={`h-2 rounded-full transition-all ${
+                        isDone
+                          ? "bg-gradient-to-r from-[#0ea5e9] to-[#e2ff3b] shadow-xs"
+                          : isCurrent
+                          ? "bg-[#163660] border border-[#e2ff3b]/60 animate-pulse"
+                          : "bg-[#0c1c34]"
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Institutional Positions Terminal List (Identical to MetaTrader Screenshot) */}
+          <div className="bg-[#071324] border border-[#142848] rounded-2xl p-4 shadow-xl">
+            <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#142848]">
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-base sm:text-lg text-white">Positions</h3>
+                <span className="text-[10px] font-mono text-[#38bdf8] font-bold bg-[#0b1f3d] border border-[#143564] px-2 py-0.5 rounded-full">
+                  LIVE QUANTITATIVE ORDER BOOK
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={fetchMicroStatus}
+                  className="text-slate-400 hover:text-white p-1 text-sm font-bold tracking-widest"
+                  title="Refresh bot positions"
+                >
+                  •••
+                </button>
+              </div>
+            </div>
+
+            <div className="divide-y divide-[#142848]/70">
+              {(microStatus?.positions && microStatus.positions.length > 0
+                ? microStatus.positions
+                : [
+                    {
+                      id: "p1",
+                      symbol: "XAUUSD",
+                      direction: "SELL",
+                      size: 0.05,
+                      entryPrice: 4412.9,
+                      currentPrice: 3991.62,
+                      pnl: 35139.83,
+                      isProfit: true,
+                      status: "CLOSED",
+                      timestamp: "Active",
+                    },
+                    {
+                      id: "p2",
+                      symbol: "XAUUSD",
+                      direction: "SELL",
+                      size: 0.05,
+                      entryPrice: 4412.77,
+                      currentPrice: 3991.62,
+                      pnl: 35128.98,
+                      isProfit: true,
+                      status: "CLOSED",
+                      timestamp: "Active",
+                    },
+                    {
+                      id: "p3",
+                      symbol: "XAUUSD",
+                      direction: "SELL",
+                      size: 0.05,
+                      entryPrice: 4412.75,
+                      currentPrice: 3991.62,
+                      pnl: 35127.32,
+                      isProfit: true,
+                      status: "OPEN",
+                      timestamp: "Active",
+                    },
+                    {
+                      id: "p4",
+                      symbol: "XAUUSD",
+                      direction: "SELL",
+                      size: 0.05,
+                      entryPrice: 4412.73,
+                      currentPrice: 3991.62,
+                      pnl: 35125.65,
+                      isProfit: true,
+                      status: "OPEN",
+                      timestamp: "Active",
+                    },
+                    {
+                      id: "p5",
+                      symbol: "XAUUSD",
+                      direction: "SELL",
+                      size: 0.05,
+                      entryPrice: 4412.78,
+                      currentPrice: 3991.62,
+                      pnl: 35129.82,
+                      isProfit: true,
+                      status: "OPEN",
+                      timestamp: "Active",
+                    },
+                    {
+                      id: "p6",
+                      symbol: "XAUUSD",
+                      direction: "SELL",
+                      size: 0.05,
+                      entryPrice: 4412.75,
+                      currentPrice: 3991.62,
+                      pnl: 35127.32,
+                      isProfit: true,
+                      status: "OPEN",
+                      timestamp: "Active",
+                    },
+                    {
+                      id: "p7",
+                      symbol: "EURUSD",
+                      direction: "SELL",
+                      size: 0.1,
+                      entryPrice: 1.082,
+                      currentPrice: 1.0841,
+                      pnl: -210.0,
+                      isProfit: false,
+                      status: "OPEN",
+                      timestamp: "Hedged",
+                    },
+                  ]
+              ).map((pos: any) => {
+                const isProfit = pos.isProfit;
+                return (
+                  <div
+                    key={pos.id}
+                    className="py-3 px-1 hover:bg-[#0c1c34]/40 transition-colors flex flex-col gap-1 rounded-lg"
+                  >
+                    <div className="flex items-center justify-between">
+                      {/* Left: Symbol, Direction, Size */}
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-black text-sm sm:text-base text-white tracking-tight">
+                          {pos.symbol}
+                        </span>
+                        <span
+                          className={`text-xs font-bold uppercase ${
+                            pos.direction === "SELL" ? "text-rose-400" : "text-[#38bdf8]"
+                          }`}
+                        >
+                          {pos.direction.toLowerCase()}
+                        </span>
+                        <span className="font-mono text-xs sm:text-sm text-slate-300 font-semibold">
+                          {pos.size.toFixed(2)}
+                        </span>
+                      </div>
+
+                      {/* Right: Institutional Profit / Loss (Cyan/Green for profit, Red for loss) */}
+                      <div className="text-right">
+                        <span
+                          className={`font-mono font-black text-sm sm:text-base md:text-lg tracking-tight ${
+                            isProfit
+                              ? "text-[#38bdf8] drop-shadow-[0_0_10px_rgba(56,189,248,0.35)]"
+                              : "text-rose-400"
+                          }`}
+                        >
+                          {isProfit ? "" : "-"}
+                          {Math.abs(pos.pnl)
+                            .toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                            .replace(/,/g, " ")}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Sub-row: Entry -> Exit route and Credited Status Badge */}
+                    <div className="flex items-center justify-between text-xs font-mono text-[#7c93b2]">
+                      <div className="flex items-center gap-1.5 text-slate-400 text-[11px] sm:text-xs">
+                        <span>{pos.entryPrice.toFixed(3)}</span>
+                        <span className="text-slate-600">→</span>
+                        <span className="text-slate-200 font-semibold">{pos.currentPrice.toFixed(3)}</span>
+                      </div>
+                      <div>
+                        {pos.status === "CLOSED" ? (
+                          <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/80 border border-emerald-800/80 px-2 py-0.5 rounded-full">
+                            +$0.20 Credited ✓
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-[#e2ff3b] font-semibold flex items-center gap-1 bg-[#0b1f3d] px-2 py-0.5 rounded-full border border-[#143564]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#e2ff3b] animate-ping" />
+                            {pos.timestamp}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* 8. Standard Market Table Header (Hot & Options tabs) */}
+          <div className="grid grid-cols-12 text-[#7c93b2] text-xs font-semibold px-2 py-1.5 select-none">
+            <div className="col-span-5 flex items-center gap-1">
+              <span>Crypto</span>
+              <span className="text-[10px] text-[#5c7395]">↕</span>
+            </div>
+            <div className="col-span-4 text-right flex items-center justify-end gap-1">
+              <span>Last Price</span>
+              <span className="text-[10px] text-[#5c7395]">↕</span>
+            </div>
+            <div className="col-span-3 text-right flex items-center justify-end gap-1">
+              <span>24h %</span>
+              <span className="text-[10px] text-[#5c7395]">↕</span>
+            </div>
+          </div>
+
+          {/* Crypto Coin List Rows */}
+          <div className="space-y-1">
+            {filteredAssets.length === 0 ? (
+              <div className="text-center py-10 bg-[#071324] rounded-xl border border-dashed border-[#142848] text-[#7c93b2] text-xs">
+                No instruments found matching &quot;{searchQuery}&quot;.
+              </div>
+            ) : (
+              filteredAssets.map((asset) => {
+                const isPositive = asset.change24h >= 0;
+                const badge = getCoinBadge(asset.symbol);
+                const symbolBase = asset.symbol.replace("/USDT", "").replace("USDT", "");
+                const quoteCurrency = asset.assetClass === "FOREX" ? "" : "USDT";
+
+                return (
+                  <div
+                    key={asset.symbol}
+                    onClick={() => onNavigateToTrade("REAL", asset)}
+                    role="button"
+                    tabIndex={0}
+                    className="grid grid-cols-12 items-center bg-[#071324]/85 hover:bg-[#0c1c34] border border-[#122544] hover:border-[#1d4274] rounded-xl px-2.5 py-3 transition-all active:scale-[0.99] cursor-pointer group shadow-sm"
+                  >
+                    {/* Coin Icon & Name */}
+                    <div className="col-span-5 flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`h-8 w-8 rounded-full ${badge.bg} ${badge.text} flex items-center justify-center text-xs shrink-0 shadow`}
+                      >
+                        {badge.icon}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1">
+                          <span className="font-extrabold text-xs sm:text-sm text-white group-hover:text-[#e2ff3b] transition-colors truncate">
+                            {symbolBase}
+                          </span>
+                          {quoteCurrency && (
+                            <span className="text-[10px] text-[#7c93b2] font-medium">
+                              {quoteCurrency}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-[#5c7395] font-mono hidden xs:block">
+                          {asset.assetClass}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Last Price */}
+                    <div className="col-span-4 text-right pr-2">
+                      <div className="font-mono font-bold text-xs sm:text-sm text-white group-hover:text-[#e2ff3b] transition-colors">
+                        {asset.currentPrice.toLocaleString("en-US", {
+                          minimumFractionDigits: asset.digits,
+                          maximumFractionDigits: asset.digits,
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 24h % Pill Badge */}
+                    <div className="col-span-3 text-right">
+                      <span
+                        className={`inline-block font-mono font-bold text-xs px-2.5 py-1.5 rounded-lg text-white shadow-xs min-w-[70px] text-center ${
+                          isPositive ? "bg-[#10b981]" : "bg-[#eb4b5f]"
+                        }`}
+                      >
+                        {isPositive ? "+" : ""}
+                        {asset.change24h.toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </>
+      )}
 
       {/* 9. Open Positions Section */}
       {activeTrades.length > 0 && (

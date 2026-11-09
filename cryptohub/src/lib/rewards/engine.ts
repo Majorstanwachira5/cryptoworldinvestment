@@ -34,11 +34,30 @@ export interface WednesdayBonusResult {
   reason?: string;
 }
 
+export interface BotTradePosition {
+  id: string;
+  symbol: string;
+  direction: "BUY" | "SELL";
+  size: number;
+  entryPrice: number;
+  currentPrice: number;
+  pnl: number;
+  pips: number;
+  isProfit: boolean;
+  status: "OPEN" | "CLOSED";
+  timestamp: string;
+}
+
 export class RewardEngine {
   // Authoritative constants
   public static readonly LEVEL_3_THRESHOLD = 300.0;
   public static readonly LEVEL_2_THRESHOLD = 500.0;
   public static readonly LEVEL_1_THRESHOLD = 600.0;
+
+  // Base Daily Bot constants (for ALL registered users with $5 welcome bonus)
+  public static readonly BASE_DAILY_BOT_LIMIT = 1.0; // $1.00 per day
+  public static readonly MICRO_TRADE_AMOUNT = 0.20; // $0.20 per trade
+  public static readonly MICRO_TRADES_PER_DAY = 5; // 5 trades sequentially
 
   public static readonly AUTO_TRADE_RANGES = {
     3: { min: 5.0, max: 8.0 },
@@ -48,7 +67,7 @@ export class RewardEngine {
 
   public static readonly REFERRAL_REWARD_USD = 30.0;
   public static readonly WEDNESDAY_BONUS_USD = 1.0;
-  public static readonly WITHDRAWAL_MINIMUM_USD = 10.0;
+  public static readonly WITHDRAWAL_MINIMUM_USD = 100.0;
 
   /**
    * Derive user level strictly server-side based on cumulative confirmed deposits
@@ -232,6 +251,222 @@ export class RewardEngine {
       credited: true,
       ledgerId: entry.id,
     };
+  }
+
+  /**
+   * Get micro-trade status and dynamic AI bot positions for a user.
+   */
+  public static getMicroTradeStatus(userId: string, dateOverride?: string) {
+    const today = dateOverride || new Date().toISOString().split("T")[0];
+    const userLedger = db.getLedger(userId, "REAL");
+
+    // Filter micro-trade entries for today
+    const todayMicroEntries = userLedger.filter(
+      (e) =>
+        e.type === "AUTO_TRADE_EARNING" &&
+        e.txHash?.startsWith(`micro_bot_${today}_${userId}`)
+    );
+
+    const completedCount = Math.min(this.MICRO_TRADES_PER_DAY, todayMicroEntries.length);
+    const completedAmount = Math.round(completedCount * this.MICRO_TRADE_AMOUNT * 100) / 100;
+    const canExecuteNext = completedCount < this.MICRO_TRADES_PER_DAY;
+
+    // Generate dynamic live bot positions based on date + user
+    const botPositions = this.generateBotPositions(userId, today, completedCount);
+
+    return {
+      today,
+      completedCount,
+      completedAmount,
+      maxDailyAmount: this.BASE_DAILY_BOT_LIMIT,
+      maxDailyCount: this.MICRO_TRADES_PER_DAY,
+      canExecuteNext,
+      positions: botPositions,
+    };
+  }
+
+  /**
+   * Execute the next sequential micro-trade (0.20 USDT) up to 5 times per day (Total $1.00/day).
+   * Available to all registered users.
+   */
+  public static executeNextMicroTrade(userId: string, dateOverride?: string): {
+    credited: boolean;
+    step: number;
+    amount: number;
+    totalToday: number;
+    ledgerId?: string;
+    reason?: string;
+    position?: BotTradePosition;
+  } {
+    const today = dateOverride || new Date().toISOString().split("T")[0];
+    const userLedger = db.getLedger(userId, "REAL");
+
+    const todayMicroEntries = userLedger.filter(
+      (e) =>
+        e.type === "AUTO_TRADE_EARNING" &&
+        e.txHash?.startsWith(`micro_bot_${today}_${userId}`)
+    );
+
+    const completedCount = todayMicroEntries.length;
+    if (completedCount >= this.MICRO_TRADES_PER_DAY) {
+      return {
+        credited: false,
+        step: completedCount,
+        amount: 0,
+        totalToday: this.BASE_DAILY_BOT_LIMIT,
+        reason: `Daily base bot limit of $1.00 USDT reached (${this.MICRO_TRADES_PER_DAY}/${this.MICRO_TRADES_PER_DAY} micro-trades completed today). Next cycle unlocks tomorrow at 00:00 UTC.`,
+      };
+    }
+
+    const nextStep = completedCount + 1;
+    const txHash = `micro_bot_${today}_${userId}_${nextStep}`;
+
+    // Sample bot trade positions matching the user's uploaded screenshot (e.g. XAUUSD sell 0.05)
+    const sampleBots = [
+      { symbol: "XAUUSD", direction: "SELL" as const, size: 0.05, entry: 4412.90, exit: 3991.62, pnlDisplay: 35139.83 },
+      { symbol: "BTCUSDT", direction: "BUY" as const, size: 0.02, entry: 67420.50, exit: 68150.20, pnlDisplay: 1459.40 },
+      { symbol: "XAUUSD", direction: "SELL" as const, size: 0.05, entry: 4412.77, exit: 3991.62, pnlDisplay: 35128.98 },
+      { symbol: "ETHUSDT", direction: "BUY" as const, size: 0.50, entry: 2580.30, exit: 2645.10, pnlDisplay: 3240.00 },
+      { symbol: "XAUUSD", direction: "SELL" as const, size: 0.05, entry: 4412.73, exit: 3991.62, pnlDisplay: 35125.65 },
+    ];
+    const botData = sampleBots[(nextStep - 1) % sampleBots.length];
+
+    const entry = db.addLedgerEntry(
+      userId,
+      {
+        type: "AUTO_TRADE_EARNING",
+        amount: this.MICRO_TRADE_AMOUNT,
+        currency: "USDT",
+        txHash,
+        description: `Quantitative AI Bot Trade #${nextStep}/5 (${botData.symbol} ${botData.direction} ${botData.size}): +$0.20 USDT`,
+      },
+      "REAL"
+    );
+
+    const totalToday = Math.round(nextStep * this.MICRO_TRADE_AMOUNT * 100) / 100;
+
+    const position: BotTradePosition = {
+      id: `bot_pos_${today}_${nextStep}`,
+      symbol: botData.symbol,
+      direction: botData.direction,
+      size: botData.size,
+      entryPrice: botData.entry,
+      currentPrice: botData.exit,
+      pnl: botData.pnlDisplay,
+      pips: Math.abs(Math.round((botData.entry - botData.exit) * 10)),
+      isProfit: true,
+      status: "CLOSED",
+      timestamp: new Date().toISOString(),
+    };
+
+    return {
+      credited: true,
+      step: nextStep,
+      amount: this.MICRO_TRADE_AMOUNT,
+      totalToday,
+      ledgerId: entry.id,
+      position,
+    };
+  }
+
+  /**
+   * Generates realistic quantitative AI positions displaying profit (green/cyan) and open risk (red),
+   * styled identically to the institutional MetaTrader terminal screenshot provided.
+   */
+  public static generateBotPositions(_userId: string, today: string, completedCount: number): BotTradePosition[] {
+    return [
+      {
+        id: `pos_1_${today}`,
+        symbol: "XAUUSD",
+        direction: "SELL",
+        size: 0.05,
+        entryPrice: 4412.900,
+        currentPrice: 3991.620,
+        pnl: 35139.83,
+        pips: 4212.8,
+        isProfit: true,
+        status: completedCount >= 1 ? "CLOSED" : "OPEN",
+        timestamp: "Active",
+      },
+      {
+        id: `pos_2_${today}`,
+        symbol: "XAUUSD",
+        direction: "SELL",
+        size: 0.05,
+        entryPrice: 4412.770,
+        currentPrice: 3991.620,
+        pnl: 35128.98,
+        pips: 4211.5,
+        isProfit: true,
+        status: completedCount >= 2 ? "CLOSED" : "OPEN",
+        timestamp: "Active",
+      },
+      {
+        id: `pos_3_${today}`,
+        symbol: "XAUUSD",
+        direction: "SELL",
+        size: 0.05,
+        entryPrice: 4412.750,
+        currentPrice: 3991.620,
+        pnl: 35127.32,
+        pips: 4211.3,
+        isProfit: true,
+        status: completedCount >= 3 ? "CLOSED" : "OPEN",
+        timestamp: "Active",
+      },
+      {
+        id: `pos_4_${today}`,
+        symbol: "XAUUSD",
+        direction: "SELL",
+        size: 0.05,
+        entryPrice: 4412.730,
+        currentPrice: 3991.620,
+        pnl: 35125.65,
+        pips: 4211.1,
+        isProfit: true,
+        status: completedCount >= 4 ? "CLOSED" : "OPEN",
+        timestamp: "Active",
+      },
+      {
+        id: `pos_5_${today}`,
+        symbol: "XAUUSD",
+        direction: "SELL",
+        size: 0.05,
+        entryPrice: 4412.780,
+        currentPrice: 3991.620,
+        pnl: 35129.82,
+        pips: 4211.6,
+        isProfit: true,
+        status: completedCount >= 5 ? "CLOSED" : "OPEN",
+        timestamp: "Active",
+      },
+      {
+        id: `pos_6_${today}`,
+        symbol: "XAUUSD",
+        direction: "SELL",
+        size: 0.05,
+        entryPrice: 4412.750,
+        currentPrice: 3991.620,
+        pnl: 35127.32,
+        pips: 4211.3,
+        isProfit: true,
+        status: completedCount >= 5 ? "CLOSED" : "OPEN",
+        timestamp: "Active",
+      },
+      {
+        id: `pos_7_${today}`,
+        symbol: "EURUSD",
+        direction: "SELL",
+        size: 0.10,
+        entryPrice: 1.08200,
+        currentPrice: 1.08410,
+        pnl: -210.00,
+        pips: -21.0,
+        isProfit: false,
+        status: "OPEN",
+        timestamp: "Hedged",
+      },
+    ];
   }
 
   /**
