@@ -175,7 +175,8 @@ export type LedgerEntryType =
   | "REFERRAL_BONUS"
   | "AUTO_TRADE_EARNING"
   | "WEDNESDAY_BONUS"
-  | "ADJUSTMENT";
+  | "ADJUSTMENT"
+  | "WELCOME_BONUS";
 
 export interface LedgerEntry {
   id: string;
@@ -187,6 +188,8 @@ export interface LedgerEntry {
   balanceAfter: number;
   txHash?: string;
   description: string;
+  status?: "CONFIRMED" | "PENDING" | "REJECTED";
+  timestamp?: string;
   createdAt: string;
 }
 

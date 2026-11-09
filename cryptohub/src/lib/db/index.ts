@@ -22,8 +22,8 @@ const DIRECT_REFERRAL_REWARD_USD = REFERRAL_REWARD_USD;
 
 const STORE_FILE = "cryptohub-store";
 
-/** Live capital is never seeded. It exists only once a verified TRC20 deposit or reward is recorded. */
-const REAL_STARTING_CAPITAL = 0.0;
+/** Welcome registration capital bonus credited to every new account upon sign up. */
+const REAL_STARTING_CAPITAL = 5.0;
 
 const DEPOSIT_ADDRESSES = {
   btc: process.env.BTC_DEPOSIT_ADDRESS || "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
@@ -111,16 +111,30 @@ function freshBalance(userId: string): Balance {
     marginUsed: 0,
     freeMargin: REAL_STARTING_CAPITAL,
     marginLevelPct: 9999,
-    totalDeposited: REAL_STARTING_CAPITAL,
+    totalDeposited: 0.0,
     updatedAt: now,
   };
 }
 
 function freshAccount(userId: string): AccountState {
+  const now = new Date().toISOString();
+  const welcomeEntry: LedgerEntry = {
+    id: `led_bonus_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    userId,
+    accountType: "REAL",
+    type: "WELCOME_BONUS",
+    amount: REAL_STARTING_CAPITAL,
+    currency: "USDT",
+    balanceAfter: REAL_STARTING_CAPITAL,
+    description: "Welcome Registration Capital Bonus ($5.00 USDT)",
+    status: "CONFIRMED",
+    timestamp: now,
+    createdAt: now,
+  };
   return {
     balance: freshBalance(userId),
     trades: [],
-    ledger: [],
+    ledger: [welcomeEntry],
   };
 }
 
@@ -159,6 +173,27 @@ class DatabaseStore {
         anyAccs.REAL = freshAccount(uid);
         cleaned = true;
       } else {
+        if (anyAccs.REAL.ledger.length === 0) {
+          const now = new Date().toISOString();
+          anyAccs.REAL.ledger.push({
+            id: `led_bonus_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            userId: uid,
+            accountType: "REAL",
+            type: "WELCOME_BONUS",
+            amount: REAL_STARTING_CAPITAL,
+            currency: "USDT",
+            balanceAfter: REAL_STARTING_CAPITAL,
+            description: "Welcome Registration Capital Bonus ($5.00 USDT)",
+            status: "CONFIRMED",
+            timestamp: now,
+            createdAt: now,
+          });
+          anyAccs.REAL.balance.availableBalance = REAL_STARTING_CAPITAL;
+          anyAccs.REAL.balance.equity = REAL_STARTING_CAPITAL;
+          anyAccs.REAL.balance.freeMargin = REAL_STARTING_CAPITAL;
+          cleaned = true;
+        }
+
         // Ensure availableBalance matches ledger sum
         const ledgerSum =
           Math.round(anyAccs.REAL.ledger.reduce((s, e) => s + e.amount, 0) * 100) / 100;
@@ -490,6 +525,37 @@ class DatabaseStore {
       "REAL"
     );
 
+    // Unlock pending referral rewards for the referrer if this user's cumulative deposits reach Level 3 threshold ($300.00)
+    const depositor = this.state.users[userId];
+    if (depositor && depositor.email) {
+      const depEmail = depositor.email.toLowerCase();
+      const updatedAccount = this.account(userId, "REAL");
+      const cumulativeDeposits = updatedAccount.ledger
+        .filter((e) => e.type === "DEPOSIT" && e.amount > 0)
+        .reduce((sum, e) => sum + e.amount, 0);
+
+      if (cumulativeDeposits >= 300) {
+        for (const [refId, records] of Object.entries(this.state.referrals)) {
+          for (const r of records) {
+            if (r.referredEmail.toLowerCase() === depEmail && r.status === "PENDING") {
+              r.status = "QUALIFIED";
+              this.addLedgerEntry(
+                refId,
+                {
+                  type: "REFERRAL_BONUS",
+                  amount: r.rewardUsd,
+                  currency: "USDT",
+                  description: `Qualified referral reward for ${depEmail} ($${r.rewardUsd.toFixed(2)} USDT)`,
+                },
+                "REAL"
+              );
+              SupabaseSync.syncReferral(r);
+            }
+          }
+        }
+      }
+    }
+
     return this.getBalance(userId, "REAL");
   }
 
@@ -586,6 +652,20 @@ class DatabaseStore {
       };
     }
 
+    // Check if the referred user has signed up and reached the deposit tier ($300.00 Level 3 threshold)
+    const referredUser = Object.values(this.state.users).find(
+      (u) => u.email.toLowerCase() === email
+    );
+
+    let refereeCumulativeDeposits = 0;
+    if (referredUser && this.state.accounts[referredUser.id]?.REAL) {
+      refereeCumulativeDeposits = this.state.accounts[referredUser.id].REAL.ledger
+        .filter((e) => e.type === "DEPOSIT" && e.amount > 0)
+        .reduce((sum, e) => sum + e.amount, 0);
+    }
+
+    const hasReachedDepositTier = refereeCumulativeDeposits >= 300;
+
     const record: ReferralRecord = {
       id: `ref_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       referrerId: userId,
@@ -593,7 +673,7 @@ class DatabaseStore {
       code,
       referredEmail: email,
       referredName: (input.name || "").trim() || email.split("@")[0],
-      status: "QUALIFIED",
+      status: hasReachedDepositTier ? "QUALIFIED" : "PENDING",
       rewardUsd: DIRECT_REFERRAL_REWARD_USD,
       tier: 1,
       createdAt: new Date().toISOString(),
@@ -601,17 +681,19 @@ class DatabaseStore {
 
     this.state.referrals[userId] = [record, ...mine];
 
-    // REAL only. Credit $30.00 direct referral atomically via ledger entry
-    this.addLedgerEntry(
-      userId,
-      {
-        type: "REFERRAL_BONUS",
-        amount: record.rewardUsd,
-        currency: "USDT",
-        description: `Direct referral reward for ${record.referredEmail} ($${record.rewardUsd.toFixed(2)} USDT)`,
-      },
-      "REAL"
-    );
+    // Authoritative rule: reward is credited to REAL ledger only once the referee deposits according to levels ($300 min)
+    if (hasReachedDepositTier) {
+      this.addLedgerEntry(
+        userId,
+        {
+          type: "REFERRAL_BONUS",
+          amount: record.rewardUsd,
+          currency: "USDT",
+          description: `Direct referral reward for ${record.referredEmail} ($${record.rewardUsd.toFixed(2)} USDT)`,
+        },
+        "REAL"
+      );
+    }
 
     const account = this.account(userId, "REAL");
     this.recalculateEquity(account);
@@ -627,7 +709,8 @@ class DatabaseStore {
     code: string,
     referredEmail: string,
     referredName?: string,
-    rewardUsd: number = REFERRAL_REWARD_USD
+    rewardUsd: number = REFERRAL_REWARD_USD,
+    status: ReferralRecord["status"] = "QUALIFIED"
   ): ReferralRecord {
     const mine = this.state.referrals[referrerId] ?? [];
     const record: ReferralRecord = {
@@ -637,7 +720,7 @@ class DatabaseStore {
       code,
       referredEmail,
       referredName: referredName || referredEmail.split("@")[0],
-      status: "QUALIFIED",
+      status,
       rewardUsd,
       tier: 1,
       createdAt: new Date().toISOString(),

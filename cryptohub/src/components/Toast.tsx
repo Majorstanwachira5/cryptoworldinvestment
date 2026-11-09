@@ -79,8 +79,8 @@ export const useToast = () => {
   const context = useContext(ToastContext);
   if (!context) {
     return {
-      showToast: (type: ToastType, title: string, message?: string) => {
-        console.log(`[Toast ${type}] ${title}: ${message}`);
+      showToast: () => {
+        /* no-op fallback when outside provider */
       },
     };
   }

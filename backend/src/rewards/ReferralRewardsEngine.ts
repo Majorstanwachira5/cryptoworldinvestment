@@ -57,6 +57,19 @@ export class ReferralRewardsEngine {
     const rewardAmountUsdt = config.referralRewardUsdt; // $30.00
     const rewardReference = `REF_REWARD_${referrerId}_${refereeId}`;
 
+    // Enforce Level Requirement: Referee must have deposited according to the tier thresholds (minimum Level 1 = $300.00)
+    const depositRow = await db.get(`
+      SELECT SUM(amount_usdt) as total_vol
+      FROM deposit_verifications
+      WHERE user_id = ? AND status IN ('VERIFIED', 'CREDITED')
+    `, [refereeId]) as { total_vol: string | number | null };
+
+    const totalDeposited = Number(depositRow?.total_vol) || 0.0;
+    if (totalDeposited < config.level1ThresholdUsdt) {
+      // Referee has not yet reached required deposit level ($300.00)
+      return [];
+    }
+
     const existingEvent = await db.get('SELECT id FROM reward_events WHERE referrer_id = ? AND referee_id = ?', [referrerId, refereeId]);
     if (existingEvent) {
       return [];

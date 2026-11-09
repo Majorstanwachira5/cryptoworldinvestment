@@ -3,6 +3,7 @@ import { credentials } from "@/lib/auth/credentials";
 import { issueAccessToken } from "@/lib/auth/access";
 import { AccessTokenResponse } from "@/types";
 import { SupabaseSync } from "@/lib/supabase/sync";
+import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,13 @@ export async function POST(request: NextRequest) {
     if (!result.ok) {
       return NextResponse.json({ success: false, error: result.error }, { status: 400 });
     }
+
+    // Initialize user account with $5.00 Welcome Registration Bonus in double-entry store
+    db.ensureUser({
+      id: result.user.id,
+      email: result.user.email,
+      name: result.user.name,
+    });
 
     const { token, expiresAt } = issueAccessToken(result.user);
 

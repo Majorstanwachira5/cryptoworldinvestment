@@ -75,11 +75,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
       const [wRes, dRes, pRes] = await Promise.allSettled([
         authFetch("/api/ledger/withdraw"),
         authFetch("/api/ledger/deposit/trc20"),
-        authFetch("/api/payments/paylor/intent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: Number(depositAmount) || 300 }),
-        }),
+        authFetch("/api/payments/paylor/intent"),
       ]);
 
       if (wRes.status === "fulfilled" && wRes.value.ok) {
@@ -92,12 +88,19 @@ export const DepositModal: React.FC<DepositModalProps> = ({
       }
       if (pRes.status === "fulfilled" && pRes.value.ok) {
         const pData = await pRes.value.json();
-        if (pData.success) setPaylorIntent(pData.intent);
+        if (pData.success) {
+          setPaylorIntent({
+            vaultAddress: pData.walletAddress,
+            contractAddress: pData.contractAddress,
+            network: pData.network,
+            channel: pData.channel,
+          });
+        }
       }
     } catch {
       // Ignored
     }
-  }, [depositAmount]);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {

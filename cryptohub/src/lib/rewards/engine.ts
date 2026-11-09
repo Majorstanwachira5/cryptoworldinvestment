@@ -349,14 +349,37 @@ export class RewardEngine {
     const referralId = `ref_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const txHash = `ref_reward_${referralId}`;
 
+    // Verify that the referee has deposited according to platform level tiers (minimum Level 3 = $300.00)
+    const referredUser = db.getAllUsers().find(
+      (u) => u.email.toLowerCase() === cleanEmail
+    );
+    let refereeCumulativeDeposits = 0;
+    if (referredUser) {
+      const refereeLedger = db.getLedger(referredUser.id, "REAL");
+      refereeCumulativeDeposits = refereeLedger
+        .filter((e) => e.type === "DEPOSIT" && e.amount > 0)
+        .reduce((sum, e) => sum + e.amount, 0);
+    }
+
+    const hasReachedDepositTier = refereeCumulativeDeposits >= 300;
+
     db.recordReferral(
       input.referrerId,
       referrer.email,
       referrer.referralCode,
       cleanEmail,
       input.referredName || cleanEmail.split("@")[0],
-      rewardUsd
+      rewardUsd,
+      hasReachedDepositTier ? "QUALIFIED" : "PENDING"
     );
+
+    if (!hasReachedDepositTier) {
+      return {
+        success: true,
+        rewardAmount: 0,
+        error: "Referral recorded as PENDING. Reward ($30.00 USDT) unlocks once referee deposits according to platform levels (min $300.00).",
+      };
+    }
 
     const entry = db.addLedgerEntry(
       input.referrerId,

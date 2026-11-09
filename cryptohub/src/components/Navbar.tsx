@@ -147,14 +147,14 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: "MIKE_AI", label: "Mike AI", icon: Sparkles },
   ];
 
-  const userName = user?.name || "Live Trader";
-  const userEmail = user?.email || "trader@cryptoworldinvestment.com";
+  const userName = user?.name || (user?.id ? `Trader #${user.id.slice(0, 6)}` : "Live Trader");
+  const userEmail = user?.email || (user?.id ? `uid_${user.id.slice(0, 8)}` : "");
   const userInitials = userName
     .split(" ")
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase() || "CW";
+    .toUpperCase() || (user?.id ? "TR" : "CW");
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[#142848] bg-[#060c18]/95 dark:bg-[#060c18]/95 light:bg-white/95 backdrop-blur-md transition-colors">
@@ -258,9 +258,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-xs sm:text-sm font-black font-mono text-white dark:text-white light:text-slate-950 truncate">
                   {formatMoney(available, currency)}
                 </span>
+                <span className="hidden xl:inline-block text-[10px] text-[#7c93b2] font-mono">
+                  (≈ {currency === "KES" ? `$${available.toFixed(2)} USDT` : `KES ${(available * (usdKesRate || 129.5)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`})
+                </span>
                 {Math.abs(balanceDelta) > 0.01 && (
                   <span
-                    className={`hidden xl:inline-block text-[8px] font-black px-1 py-0.2 rounded border ${
+                    className={`hidden 2xl:inline-block text-[8px] font-black px-1 py-0.2 rounded border ${
                       balanceDelta >= 0
                         ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
                         : "bg-rose-500/20 text-rose-400 border-rose-500/40"
@@ -472,14 +475,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {/* User Header */}
                 <div className="px-3 py-2 border-b border-[#142848] mb-1">
                   <div className="font-extrabold text-sm text-white truncate">{userName}</div>
-                  <div className="text-[11px] text-slate-400 truncate">{userEmail}</div>
+                  <div className="text-[11px] text-slate-400 truncate">
+                    {userEmail || (user?.id ? `UID: ${user.id}` : "Session Active")}
+                  </div>
                   <div className="flex items-center gap-1.5 mt-1.5">
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-[#071d3a] text-[#38bdf8] border border-[#144588]">
-                      REAL • ACTIVE
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-[#081224] text-slate-400 border border-[#142848]">
-                      KYC {user?.kycStatus || "VERIFIED"}
-                    </span>
+                    {user?.id ? (
+                      <>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-[#071d3a] text-[#38bdf8] border border-[#144588]">
+                          REAL • ACTIVE
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-[#081224] text-slate-400 border border-[#142848]">
+                          UID: {user.id.slice(0, 8)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-[#071d3a] text-[#38bdf8] border border-[#144588]">
+                        REAL ACCOUNT
+                      </span>
+                    )}
                   </div>
                 </div>
 

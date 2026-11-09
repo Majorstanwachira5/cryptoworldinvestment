@@ -563,17 +563,24 @@ function TradingPlatformContent() {
     );
   };
 
+  // Strict Multi-Layer Security Gate: Block access to the main dashboard without authenticated backend-issued user ID
+  useEffect(() => {
+    if (view === "TERMINAL" && (!isAuthenticated || !session.user?.id)) {
+      setView("LANDING");
+      setIsAuthOpen(true);
+    }
+  }, [view, isAuthenticated, session.user?.id]);
+
   /** Entry point used by the landing page buttons. */
   const handleOpenTerminal = async (targetType: AccountType) => {
-    setView("TERMINAL");
-    setSection("HOME");
-
     const allowed = await requestAccountAccess(targetType);
-    if (!allowed) {
+    if (!allowed || !session.user?.id) {
       setIsAuthOpen(true);
       return;
     }
 
+    setView("TERMINAL");
+    setSection("HOME");
     setAccountType("REAL");
     accountTypeRef.current = "REAL";
   };
@@ -764,6 +771,7 @@ function TradingPlatformContent() {
                 assets={assets}
                 accountType={accountType}
                 currency={currency}
+                usdKesRate={usdKesRate}
                 onNavigateToTrade={(targetType, asset) => {
                   if (targetType) handleSwitchAccount(targetType);
                   if (asset) {

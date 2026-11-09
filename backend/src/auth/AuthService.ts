@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { randomUUID as uuidv4 } from 'crypto';
 import { db } from '../database';
 import { config } from '../config';
+import { LedgerService } from '../ledger/LedgerService';
 
 export class AuthService {
 
@@ -25,10 +26,33 @@ export class AuthService {
         VALUES (?, ?, ?, ?, ?, 'USER')
       `, [userId, normalizedEmail, passwordHash, fullName, userReferralCode], client);
 
+      const welcomeBonusMicro = 5_000_000; // $5.00 USDT Welcome Bonus
+
       await db.run(`
         INSERT INTO wallets (id, user_id, asset, total_balance_micro, reserved_balance_micro)
-        VALUES (?, ?, 'USDT', 0, 0)
-      `, [walletId, userId], client);
+        VALUES (?, ?, 'USDT', ?, 0)
+      `, [walletId, userId, welcomeBonusMicro], client);
+
+      const sysWallet = await LedgerService.getOrCreateSystemWallet();
+      const txId = uuidv4();
+      await db.run(`
+        INSERT INTO ledger_transactions (id, reference, type, description)
+        VALUES (?, ?, 'WELCOME_BONUS', 'Welcome Registration Capital Bonus ($5.00 USDT)')
+      `, [txId, `WELCOME_BONUS_${userId}`], client);
+
+      await db.run(`
+        INSERT INTO ledger_entries (id, transaction_id, wallet_id, entry_type, amount_micro)
+        VALUES (?, ?, ?, 'DEBIT', ?)
+      `, [uuidv4(), txId, sysWallet.id, welcomeBonusMicro], client);
+
+      await db.run(`
+        INSERT INTO ledger_entries (id, transaction_id, wallet_id, entry_type, amount_micro)
+        VALUES (?, ?, ?, 'CREDIT', ?)
+      `, [uuidv4(), txId, walletId, welcomeBonusMicro], client);
+
+      await db.run(`
+        UPDATE wallets SET total_balance_micro = total_balance_micro - ? WHERE id = ?
+      `, [welcomeBonusMicro, sysWallet.id], client);
 
       if (referralCodeInput) {
         const referrer = await db.get('SELECT id FROM users WHERE referral_code = ?', [referralCodeInput.trim().toUpperCase()], client) as { id: string } | undefined;

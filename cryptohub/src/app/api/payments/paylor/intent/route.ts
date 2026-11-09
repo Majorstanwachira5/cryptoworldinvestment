@@ -3,6 +3,26 @@ import { requirePermission, platformUserId } from "@/lib/auth/access";
 
 export const dynamic = "force-dynamic";
 
+export async function GET(request: NextRequest) {
+  const auth = await requirePermission(request, "trade:real");
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const channel = process.env.PAYLOR_PAYMENT_CHANNEL || "PAYL-EFSJUF";
+  const walletAddress = process.env.PAYLOR_TRON_WALLET || "TEbs6th1rgsrZNiYqdZEHGoJ3FJFA1zGYd";
+
+  return NextResponse.json({
+    success: true,
+    channel,
+    walletAddress,
+    contractAddress: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+    network: "TRC20",
+    asset: "USDT",
+    requiredConfirmations: 19,
+  });
+}
+
 export async function POST(request: NextRequest) {
   const auth = await requirePermission(request, "trade:real");
   if (!auth.ok) {

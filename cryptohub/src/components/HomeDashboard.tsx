@@ -37,6 +37,7 @@ interface HomeDashboardProps {
   assets: MarketAsset[];
   accountType: AccountType;
   currency: DisplayCurrency;
+  usdKesRate?: number;
   onNavigateToTrade: (accountType?: AccountType, asset?: MarketAsset) => void;
   onNavigateToReferrals: () => void;
   onNavigateToMike: () => void;
@@ -52,6 +53,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   trades,
   assets,
   currency,
+  usdKesRate = 129.5,
   onNavigateToTrade,
   onNavigateToReferrals,
   onNavigateToMike,
@@ -237,6 +239,26 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <span className="text-xs sm:text-sm font-bold text-[#38bdf8]">
                 {currency === "USD" ? "USDT" : currency}
               </span>
+            </div>
+
+            {/* Dual Currency Reflection: KES Equivalent */}
+            <div className="flex items-center gap-1.5 text-xs text-[#7c93b2] font-mono mt-0.5">
+              <span className="text-slate-400">≈</span>
+              <span className="text-[#e2ff3b] font-bold">
+                {showBalance
+                  ? currency === "KES"
+                    ? `$${realAvailable.toFixed(2)} USDT`
+                    : `KES ${(realAvailable * (usdKesRate || 129.5)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : "••••••"}
+              </span>
+              <span className="text-[10px] uppercase font-bold text-slate-400">
+                {currency === "KES" ? "USDT" : "KES"}
+              </span>
+              {realAvailable >= 5.0 && (
+                <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.2 rounded ml-1">
+                  Verified Real Balance
+                </span>
+              )}
             </div>
           </div>
 
