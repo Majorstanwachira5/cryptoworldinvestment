@@ -142,7 +142,7 @@ export const ReferralPanel: React.FC<ReferralPanelProps> = ({
       <div className="bg-gradient-to-r from-[#101726] via-[#0e1422] to-[#0c111c] border border-slate-800 rounded-xl p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-[#e2ff3b]/15 border border-[#e2ff3b]/30 flex items-center justify-center text-[#e2ff3b] shrink-0">
               <Gift className="w-5 h-5" />
             </div>
             <div>
@@ -150,21 +150,21 @@ export const ReferralPanel: React.FC<ReferralPanelProps> = ({
                 <h3 className="font-black text-sm sm:text-base text-white tracking-wide">
                   INSTITUTIONAL REFERRAL & TIER PROMOTION PROGRAM
                 </h3>
-                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-[#071d3a] text-[#38bdf8] border border-[#144588]">
                   REAL CAPITAL
                 </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-[#e2ff3b]/15 text-[#e2ff3b] border border-[#e2ff3b]/40 shadow-xs">
                   ★ VIP REWARD
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Earn <span className="text-amber-400 font-bold">$30.00 USDT Direct Bonus</span> per qualified referral credited to your REAL ledger + unlock Level 2 (&gt;10 invites) &amp; Level 1 (&gt;20 invites).
+                Earn <span className="text-[#e2ff3b] font-bold">$30.00 USDT Direct Bonus</span> per qualified referral credited to your REAL ledger + unlock Level 2 (&gt;10 invites) &amp; Level 1 (&gt;20 invites).
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-center">
-            <div className="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800 text-[11px] font-mono text-cyan-400 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <div className="px-3 py-1.5 rounded-lg bg-[#060c18] border border-[#142848] text-[11px] font-mono text-[#38bdf8] flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#e2ff3b]" />
               <span>Direct Ledger Payouts</span>
             </div>
           </div>

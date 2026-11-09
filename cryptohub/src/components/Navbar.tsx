@@ -156,7 +156,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     .toUpperCase() || "CH";
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-[#0b0e14]/95 dark:bg-[#0b0e14]/95 light:bg-white/95 backdrop-blur-md transition-colors">
+    <header className="sticky top-0 z-40 w-full border-b border-[#142848] bg-[#060c18]/95 dark:bg-[#060c18]/95 light:bg-white/95 backdrop-blur-md transition-colors">
       <div className="max-w-[1920px] mx-auto px-2 sm:px-3 lg:px-4 h-15 flex items-center justify-between gap-3 lg:gap-4">
         {/* ================= LEFT SECTION: Brand & Desktop Navigation ================= */}
         <div className="flex items-center gap-3 lg:gap-5 min-w-0">
@@ -165,27 +165,27 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={onGoHome}
               title="Return to Public Landing Page"
-              className="h-9 w-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-emerald-400 flex items-center justify-center font-black text-slate-950 text-sm tracking-wider hover:opacity-90 transition-opacity active:scale-95 shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              className="h-9 w-9 rounded-xl bg-gradient-to-tr from-[#0284c7] via-[#0ea5e9] to-[#e2ff3b] flex items-center justify-center font-black text-slate-950 text-sm tracking-wider hover:opacity-90 transition-opacity active:scale-95 shrink-0 focus:outline-none focus:ring-2 focus:ring-[#e2ff3b] shadow-md shadow-[#e2ff3b]/20"
             >
               CH
             </button>
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5 leading-none">
                 <span className="font-extrabold text-base tracking-tight text-white dark:text-white light:text-slate-900">
-                  Crypto<span className="text-cyan-400">Hub</span>
+                  Crypto<span className="text-[#e2ff3b]">Hub</span>
                 </span>
-                <span className="px-1.5 py-0.5 text-[9px] font-black tracking-widest uppercase rounded bg-emerald-950 text-emerald-300 border border-emerald-700/80 shadow-xs">
+                <span className="px-1.5 py-0.5 text-[9px] font-black tracking-widest uppercase rounded bg-[#071d3a] text-[#38bdf8] border border-[#144588] shadow-xs">
                   REAL
                 </span>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black tracking-widest uppercase rounded-full bg-gradient-to-r from-amber-500/20 via-yellow-400/20 to-amber-500/20 text-amber-300 border border-amber-400/40 shadow-xs">
-                  <span className="text-amber-400 text-[10px]">★</span> VIP TIER
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black tracking-widest uppercase rounded-full bg-[#e2ff3b]/15 text-[#e2ff3b] border border-[#e2ff3b]/40 shadow-[0_0_10px_rgba(226,255,59,0.2)]">
+                  <span className="text-[#e2ff3b] text-[10px]">★</span> VIP TIER
                 </span>
               </div>
               <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="h-1.5 w-1.5 rounded-full bg-[#e2ff3b] animate-pulse shrink-0" />
                 <span className="text-slate-400 font-medium hidden sm:inline">Live Feed</span>
                 <span className="text-slate-600 hidden sm:inline">•</span>
-                <span className="font-mono font-semibold text-emerald-400 truncate">
+                <span className="font-mono font-semibold text-[#38bdf8] truncate">
                   {activeSymbol}
                 </span>
               </div>
@@ -196,7 +196,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {onSelectSection && (
             <nav
               aria-label="Primary Navigation"
-              className="hidden md:flex items-center gap-1 pl-3 lg:pl-4 border-l border-slate-800/80"
+              className="hidden md:flex items-center gap-1 pl-3 lg:pl-4 border-l border-[#142848]"
             >
               {NAV_LINKS.map(({ id, label, icon: Icon }) => {
                 const isActive = currentTab === id;
@@ -206,14 +206,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                     onClick={() => onSelectSection(id)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       isActive
-                        ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 shadow-xs"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                        ? "bg-[#0c2242] text-[#e2ff3b] border border-[#e2ff3b]/40 shadow-[0_0_15px_rgba(226,255,59,0.15)]"
+                        : "text-slate-400 hover:text-white hover:bg-[#091528]"
                     }`}
                   >
-                    <Icon className={`w-3.5 h-3.5 ${isActive ? "text-cyan-400" : ""}`} />
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? "text-[#e2ff3b]" : ""}`} />
                     <span>{label}</span>
                     {id === "MIKE_AI" && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#e2ff3b] animate-pulse" />
                     )}
                   </button>
                 );
@@ -228,26 +228,26 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex md:hidden items-center gap-1">
             <button
               onClick={() => onSelectSection?.("MIKE_AI")}
-              className="flex items-center justify-center h-8 w-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-all active:scale-95"
+              className="flex items-center justify-center h-8 w-8 rounded-full bg-[#0b182d] hover:bg-[#102444] border border-[#142848] text-[#38bdf8] hover:text-[#e2ff3b] transition-all active:scale-95"
               title="Customer Support & Mike AI"
             >
-              <Headphones className="w-4 h-4 text-slate-300" />
+              <Headphones className="w-4 h-4" />
             </button>
             <button
               onClick={onOpenLedger}
-              className="flex items-center justify-center h-8 w-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-all active:scale-95"
+              className="flex items-center justify-center h-8 w-8 rounded-full bg-[#0b182d] hover:bg-[#102444] border border-[#142848] text-[#38bdf8] hover:text-[#e2ff3b] transition-all active:scale-95"
               title="Transaction Ledger & Notifications"
             >
-              <Bell className="w-4 h-4 text-slate-300" />
+              <Bell className="w-4 h-4" />
             </button>
           </div>
 
           {/* Compact Financial Status Widget (Desktop) */}
-          <div className="hidden md:flex items-center gap-2 sm:gap-3 bg-slate-900/90 dark:bg-slate-900/90 light:bg-slate-100 border border-slate-800/90 dark:border-slate-800/90 light:border-slate-200 rounded-xl px-2.5 sm:px-3 py-1.5 shadow-inner">
+          <div className="hidden md:flex items-center gap-2 sm:gap-3 bg-[#081224] dark:bg-[#081224] light:bg-slate-100 border border-[#142848] dark:border-[#142848] light:border-slate-200 rounded-xl px-2.5 sm:px-3 py-1.5 shadow-inner">
             {/* Available Balance */}
             <div className="flex flex-col min-w-0">
               <span className="text-[8px] sm:text-[9px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
-                <Wallet className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
+                <Wallet className="w-2.5 h-2.5 text-[#e2ff3b] shrink-0" />
                 <span>Available</span>
               </span>
               <div className="flex items-center gap-1.5">
@@ -268,12 +268,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            <div className="h-5 w-px bg-slate-800 dark:bg-slate-800 light:bg-slate-300" />
+            <div className="h-5 w-px bg-[#142848] dark:bg-[#142848] light:bg-slate-300" />
 
             {/* Live Equity */}
             <div className="flex flex-col min-w-0">
               <span className="text-[8px] sm:text-[9px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
-                <Activity className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                <Activity className="w-2.5 h-2.5 text-[#38bdf8] shrink-0" />
                 <span>Equity</span>
               </span>
               <span
@@ -289,11 +289,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div ref={healthRef} className="relative hidden lg:block">
               <button
                 onClick={() => setIsHealthOpen((prev) => !prev)}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-950/70 dark:bg-slate-950/70 light:bg-white border border-slate-800 hover:border-slate-700 text-[10px] text-slate-300 transition-colors"
+                className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#050b14] dark:bg-[#050b14] light:bg-white border border-[#142848] hover:border-[#0ea5e9]/50 text-[10px] text-slate-300 transition-colors"
                 title="View margin health metrics"
               >
                 <span className="text-slate-500 uppercase font-bold">Free</span>
-                <span className="font-mono text-cyan-400 font-bold">
+                <span className="font-mono text-[#38bdf8] font-bold">
                   {formatMoney(freeMargin, currency)}
                 </span>
                 <ChevronDown className="w-3 h-3 text-slate-400" />
@@ -302,9 +302,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               {isHealthOpen && (
                 <div
                   role="tooltip"
-                  className="absolute right-0 mt-2 w-56 bg-[#111726] border border-slate-700 rounded-xl p-3 shadow-xl z-50 text-xs space-y-2 animate-fade-in"
+                  className="absolute right-0 mt-2 w-56 bg-[#0b1628] border border-[#142848] rounded-xl p-3 shadow-2xl z-50 text-xs space-y-2 animate-fade-in"
                 >
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 pb-1 border-b border-slate-800">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 pb-1 border-b border-[#142848]">
                     Account Health Details
                   </div>
                   <div className="flex justify-between">
@@ -315,7 +315,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Free Margin:</span>
-                    <span className="font-mono font-bold text-cyan-400">
+                    <span className="font-mono font-bold text-[#38bdf8]">
                       {formatMoney(freeMargin, currency)}
                     </span>
                   </div>
@@ -325,13 +325,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                       className={`font-mono font-bold ${
                         marginLevel > 200 || marginLevel === 0
                           ? "text-emerald-400"
-                          : "text-amber-400"
+                          : "text-[#e2ff3b]"
                       }`}
                     >
                       {marginLevel > 2000 ? ">2000%" : `${marginLevel.toFixed(1)}%`}
                     </span>
                   </div>
-                  <div className="flex justify-between pt-1 border-t border-slate-800/80">
+                  <div className="flex justify-between pt-1 border-t border-[#142848]">
                     <span className="text-slate-400">Total Deposited:</span>
                     <span className="font-mono font-bold text-slate-300">
                       {formatMoney(BASELINE, currency)}
@@ -346,7 +346,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="hidden md:flex items-center gap-1.5">
             <button
               onClick={() => onOpenDeposit("DEPOSIT")}
-              className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-400 shrink-0"
+              className="flex items-center gap-1.5 bg-[#e2ff3b] hover:bg-[#d5f32a] text-[#050b14] font-black px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs shadow-md shadow-[#e2ff3b]/20 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#e2ff3b] shrink-0"
               title="Deposit TRC20 USDT"
             >
               <ArrowDownToLine className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -355,10 +355,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={() => onOpenDeposit("WITHDRAW")}
-              className="hidden sm:flex items-center gap-1.5 bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 hover:text-white border border-slate-700 hover:border-slate-600 font-bold px-3 py-1.5 sm:py-2 rounded-xl text-xs transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-slate-400 shrink-0"
+              className="hidden sm:flex items-center gap-1.5 bg-[#0b172a] hover:bg-[#102342] text-slate-200 hover:text-white border border-[#142848] hover:border-[#1d4278] font-bold px-3 py-1.5 sm:py-2 rounded-xl text-xs transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#38bdf8] shrink-0"
               title="Withdraw TRC20 USDT (Minimum $100.00)"
             >
-              <ArrowUpRight className="w-3.5 h-3.5 text-amber-400 stroke-[2.5]" />
+              <ArrowUpRight className="w-3.5 h-3.5 text-[#38bdf8] stroke-[2.5]" />
               <span>Withdraw</span>
             </button>
           </div>
@@ -369,7 +369,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setIsCurrencyOpen((prev) => !prev)}
               aria-haspopup="listbox"
               aria-expanded={isCurrencyOpen}
-              className="flex items-center gap-1 bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 border border-slate-700 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-black transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              className="flex items-center gap-1 bg-[#0b182d] hover:bg-[#102444] text-slate-200 border border-[#142848] px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-black transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#e2ff3b]"
               title={`Display Currency: ${currency}. Click to switch.`}
             >
               <span>{currency}</span>
@@ -383,9 +383,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             {isCurrencyOpen && (
               <div
                 role="listbox"
-                className="absolute right-0 mt-2 w-44 bg-[#111726] border border-slate-700 rounded-xl p-1.5 shadow-2xl z-50 animate-fade-in"
+                className="absolute right-0 mt-2 w-44 bg-[#0b1628] border border-[#142848] rounded-xl p-1.5 shadow-2xl z-50 animate-fade-in"
               >
-                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 mb-1">
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-[#142848] mb-1">
                   Display Currency
                 </div>
                 <button
@@ -394,15 +394,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => handleSelectCurrency("USD")}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                     currency === "USD"
-                      ? "bg-cyan-500/15 text-cyan-400"
-                      : "text-slate-300 hover:bg-slate-800/70"
+                      ? "bg-[#0c2242] text-[#e2ff3b]"
+                      : "text-slate-300 hover:bg-[#081224]"
                   }`}
                 >
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono font-bold">$</span>
                     <span>USD ($)</span>
                   </div>
-                  {currency === "USD" && <Check className="w-3.5 h-3.5 text-cyan-400" />}
+                  {currency === "USD" && <Check className="w-3.5 h-3.5 text-[#e2ff3b]" />}
                 </button>
 
                 <button
@@ -411,17 +411,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => handleSelectCurrency("KES")}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                     currency === "KES"
-                      ? "bg-cyan-500/15 text-cyan-400"
-                      : "text-slate-300 hover:bg-slate-800/70"
+                      ? "bg-[#0c2242] text-[#e2ff3b]"
+                      : "text-slate-300 hover:bg-[#081224]"
                   }`}
                 >
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono font-bold">KSh</span>
                     <span>KES (KSh)</span>
                   </div>
-                  {currency === "KES" && <Check className="w-3.5 h-3.5 text-cyan-400" />}
+                  {currency === "KES" && <Check className="w-3.5 h-3.5 text-[#e2ff3b]" />}
                 </button>
-                <div className="px-2 pt-1.5 mt-1 border-t border-slate-800 text-[10px] text-slate-500 font-mono">
+                <div className="px-2 pt-1.5 mt-1 border-t border-[#142848] text-[10px] text-slate-400 font-mono">
                   1 USD = {usdKesRate.toFixed(2)} KES
                 </div>
               </div>
@@ -432,12 +432,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={toggleTheme}
             title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            className="flex items-center justify-center h-8 w-8 bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700 rounded-xl transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="flex items-center justify-center h-8 w-8 bg-[#0b182d] hover:bg-[#102444] text-slate-200 border border-[#142848] rounded-xl transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#e2ff3b]"
           >
             {theme === "dark" ? (
-              <Sun className="w-4 h-4 text-amber-400" />
+              <Sun className="w-4 h-4 text-[#e2ff3b]" />
             ) : (
-              <Moon className="w-4 h-4 text-cyan-400" />
+              <Moon className="w-4 h-4 text-[#38bdf8]" />
             )}
           </button>
 
@@ -447,10 +447,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setIsAccountOpen((prev) => !prev)}
               aria-haspopup="menu"
               aria-expanded={isAccountOpen}
-              className="flex items-center gap-1.5 p-1 sm:px-2 sm:py-1 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              className="flex items-center gap-1.5 p-1 sm:px-2 sm:py-1 rounded-xl bg-[#0b182d] hover:bg-[#102444] border border-[#142848] transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#e2ff3b]"
               title="Account Menu"
             >
-              <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-500 flex items-center justify-center text-white font-black text-xs shadow-xs">
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-[#0284c7] via-[#0ea5e9] to-[#1e40af] flex items-center justify-center text-white font-black text-xs shadow-xs">
                 {userInitials}
               </div>
               <ChevronDown
@@ -463,17 +463,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             {isAccountOpen && (
               <div
                 role="menu"
-                className="absolute right-0 mt-2 w-64 bg-[#111726] border border-slate-700 rounded-2xl p-2.5 shadow-2xl z-50 text-xs space-y-1 animate-fade-in"
+                className="absolute right-0 mt-2 w-64 bg-[#0b1628] border border-[#142848] rounded-2xl p-2.5 shadow-2xl z-50 text-xs space-y-1 animate-fade-in"
               >
                 {/* User Header */}
-                <div className="px-3 py-2 border-b border-slate-800/80 mb-1">
+                <div className="px-3 py-2 border-b border-[#142848] mb-1">
                   <div className="font-extrabold text-sm text-white truncate">{userName}</div>
                   <div className="text-[11px] text-slate-400 truncate">{userEmail}</div>
                   <div className="flex items-center gap-1.5 mt-1.5">
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-950 text-emerald-400 border border-emerald-800">
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-[#071d3a] text-[#38bdf8] border border-[#144588]">
                       REAL • ACTIVE
                     </span>
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-800 text-slate-400 border border-slate-700">
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-[#081224] text-slate-400 border border-[#142848]">
                       KYC {user?.kycStatus || "VERIFIED"}
                     </span>
                   </div>

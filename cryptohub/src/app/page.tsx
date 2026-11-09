@@ -731,7 +731,7 @@ function TradingPlatformContent() {
             onOpenAuth={() => setIsAuthOpen(true)}
           />
       ) : (
-        <main className="min-h-screen flex flex-col bg-[#0b0e14] pb-20 md:pb-6 transition-colors duration-200">
+        <main className="min-h-screen flex flex-col bg-[#050b14] pb-20 md:pb-6 transition-colors duration-200">
           {/* Top Financial Margin Bar */}
           <Navbar
             balance={balance}
@@ -790,7 +790,7 @@ function TradingPlatformContent() {
               />
 
               {/* Mobile Sub-Tab Navigation (hidden on desktop) */}
-              <div className="flex items-center gap-0 border-b border-slate-800 bg-[#0d121c] md:hidden overflow-x-auto scrollbar-none">
+              <div className="flex items-center gap-0 border-b border-[#142848] bg-[#060c18] md:hidden overflow-x-auto scrollbar-none">
                 {([
                   { id: "chart", label: "📊 Chart" },
                   { id: "order", label: "⚡ Order" },
@@ -802,8 +802,8 @@ function TradingPlatformContent() {
                     onClick={() => setMobileTradeTab(id)}
                     className={`flex-1 min-w-max px-4 py-2.5 text-xs font-bold whitespace-nowrap transition-all border-b-2 ${
                       mobileTradeTab === id
-                        ? "border-cyan-400 text-cyan-400 bg-cyan-500/5"
-                        : "border-transparent text-slate-400 hover:text-slate-200"
+                        ? "border-[#e2ff3b] text-[#e2ff3b] bg-[#e2ff3b]/10"
+                        : "border-transparent text-[#7c93b2] hover:text-white"
                     }`}
                   >
                     {label}

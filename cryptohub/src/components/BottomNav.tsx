@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Home, BarChart3, BookOpen, Wallet, Gift } from "lucide-react";
+import { Home, BarChart3, BookOpen, Wallet } from "lucide-react";
 
 export type NavSection = "HOME" | "TRADE" | "REFERRAL" | "PROFILE" | "MIKE_AI";
 
@@ -25,10 +25,9 @@ const ITEMS: {
 ];
 
 /**
- * Modern Mobile Bottom Navigation Bar (Matching Android Exchange UI)
- * 4 primary sections: Home | Market | Futures | Wallet
- * Highlighted with warm gold (#f0b90b) active state.
- * Fixed to viewport bottom with Android safe-area insets and touch targets >= 48px.
+ * Modern Mobile Bottom Navigation Bar
+ * Ocean Blue & Midnight Blue base with Acid Yellow (#e2ff3b) active state.
+ * Fixed to viewport bottom with Android safe-area insets.
  */
 export const BottomNav: React.FC<BottomNavProps> = ({
   active,
@@ -40,7 +39,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   return (
     <nav
       aria-label="Mobile Navigation"
-      className="fixed bottom-0 inset-x-0 z-50 border-t border-slate-800/80 bg-[#0c1017]/95 dark:bg-[#0c1017]/95 light:bg-white/95 backdrop-blur-xl md:hidden transition-colors"
+      className="fixed bottom-0 inset-x-0 z-50 border-t border-[#142848] bg-[#060c18]/95 dark:bg-[#060c18]/95 light:bg-white/95 backdrop-blur-xl md:hidden transition-colors"
     >
       <ul className="grid grid-cols-4 h-14 items-center">
         {ITEMS.map(({ id, Icon, label }) => {
@@ -55,17 +54,19 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 aria-current={isActive ? "page" : undefined}
                 className={`relative w-full h-full flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 ${
                   isActive
-                    ? "text-[#f0b90b] font-bold"
-                    : "text-slate-400 hover:text-slate-200"
+                    ? "text-[#e2ff3b] font-black"
+                    : "text-[#7c93b2] hover:text-white"
                 }`}
               >
                 {isActive && (
-                  <span className="absolute top-0 inset-x-4 h-0.5 rounded-full bg-[#f0b90b]" />
+                  <span className="absolute top-0 inset-x-4 h-0.5 rounded-full bg-[#e2ff3b] shadow-[0_0_10px_rgba(226,255,59,0.7)]" />
                 )}
                 <div className="relative">
                   <Icon
                     className={`w-5 h-5 transition-transform ${
-                      isActive ? "scale-105 text-[#f0b90b]" : "text-slate-400"
+                      isActive
+                        ? "scale-105 text-[#e2ff3b] drop-shadow-[0_0_8px_rgba(226,255,59,0.5)]"
+                        : "text-[#7c93b2]"
                     }`}
                   />
                   {badge > 0 && (
@@ -74,12 +75,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                     </span>
                   )}
                   {id === "MIKE_AI" && !isActive && (
-                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#f0b90b] animate-pulse" />
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#e2ff3b] animate-pulse" />
                   )}
                 </div>
                 <span
                   className={`text-[10px] tracking-tight leading-none mt-0.5 ${
-                    isActive ? "font-bold text-[#f0b90b]" : "font-medium text-slate-400"
+                    isActive ? "font-bold text-[#e2ff3b]" : "font-medium text-[#7c93b2]"
                   }`}
                 >
                   {label}

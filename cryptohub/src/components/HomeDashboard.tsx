@@ -23,17 +23,9 @@ import {
   ArrowDown,
   X,
   Sparkles,
-  ArrowRight,
-  ShieldCheck,
-  Award,
   Layers,
-  ChevronRight,
-  TrendingUp,
-  Activity,
   Check,
   Copy,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 
 interface HomeDashboardProps {
@@ -71,7 +63,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryTab, setCategoryTab] = useState<"hot" | "favorites" | "options">("hot");
   const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const [favorites, setFavorites] = useState<string[]>(["BTC/USDT", "ETH/USDT", "SOL/USDT"]);
+  const [favorites] = useState<string[]>(["BTC/USDT", "ETH/USDT", "SOL/USDT"]);
   const [copiedCode, setCopiedCode] = useState(false);
 
   const [levelInfo, setLevelInfo] = useState<{
@@ -126,8 +118,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       if (categoryTab === "options") {
         return asset.assetClass === "FOREX";
       }
-      // "hot" tab shows crypto pairs, prioritizing BTC, ETH, SOL
-      return asset.assetClass === "CRYPTO" || true;
+      return true;
     });
   }, [assets, categoryTab, searchQuery, favorites]);
 
@@ -146,15 +137,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       return { bg: "bg-[#f3ba2f]", text: "text-slate-950 font-black", icon: "◆" };
     }
     if (clean.includes("XRP")) {
-      return { bg: "bg-slate-800 border border-slate-600", text: "text-white font-black", icon: "✕" };
+      return { bg: "bg-[#0b1b33] border border-[#1e3e6b]", text: "text-white font-black", icon: "✕" };
     }
     if (clean.includes("DOGE")) {
       return { bg: "bg-[#c2a633]", text: "text-slate-950 font-black", icon: "Ð" };
     }
     if (clean.includes("EUR") || clean.includes("GBP") || clean.includes("JPY")) {
-      return { bg: "bg-blue-600", text: "text-white font-black", icon: "€" };
+      return { bg: "bg-[#0284c7]", text: "text-white font-black", icon: "€" };
     }
-    return { bg: "bg-cyan-600", text: "text-white font-bold", icon: clean.slice(0, 2) };
+    return { bg: "bg-[#0ea5e9]", text: "text-white font-bold", icon: clean.slice(0, 2) };
   };
 
   const copyReferralCode = async () => {
@@ -170,28 +161,28 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   return (
     <div className="space-y-3.5 w-full max-w-[1400px] mx-auto pb-16">
-      {/* 1. Top Notice / App Download Banner (Dismissable) */}
+      {/* 1. Top Notice / App Download Banner (Midnight Ocean + Acid Yellow) */}
       {!dismissBanner && (
-        <div className="flex items-center justify-between bg-[#121620] border border-slate-800/90 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 shadow-md">
+        <div className="flex items-center justify-between bg-[#071326] border border-[#142e54] rounded-xl px-3.5 py-2.5 text-xs text-slate-200 shadow-xl">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-6 w-6 rounded-lg bg-gradient-to-tr from-[#f0b90b] to-amber-500 flex items-center justify-center text-slate-950 font-black text-xs shrink-0 shadow">
+            <div className="h-6 w-6 rounded-lg bg-gradient-to-tr from-[#0284c7] via-[#0ea5e9] to-[#e2ff3b] flex items-center justify-center text-[#050b14] font-black text-xs shrink-0 shadow-md">
               ⚡
             </div>
-            <span className="truncate text-xs sm:text-sm font-medium">
+            <span className="truncate text-xs sm:text-sm font-medium text-slate-300">
               To access additional features, click to download the app.
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-2">
             <button
               onClick={() => alert("CryptoHub Android PWA / APK package is configured. Add to Home Screen via browser menu for full native installation.")}
-              className="h-7 w-7 rounded-full bg-[#f0b90b] hover:bg-[#d8a406] text-slate-950 flex items-center justify-center font-black transition-all active:scale-95 shadow"
+              className="h-7 w-7 rounded-full bg-[#e2ff3b] hover:bg-[#d5f32a] text-[#050b14] flex items-center justify-center font-black transition-all active:scale-95 shadow-md shadow-[#e2ff3b]/20"
               title="Download Android App"
             >
               <ArrowDown className="w-4 h-4 stroke-[2.5]" />
             </button>
             <button
               onClick={() => setDismissBanner(true)}
-              className="text-slate-400 hover:text-white p-1 transition-colors"
+              className="text-[#7c93b2] hover:text-white p-1 transition-colors"
               title="Dismiss notice"
             >
               <X className="w-4 h-4" />
@@ -200,78 +191,81 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       )}
 
-      {/* 2. Sleek Mobile Search Bar */}
+      {/* 2. Sleek Midnight Ocean Search Bar */}
       <div className="relative">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Search className="w-4 h-4 text-[#7c93b2] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search crypto pairs (BTC, ETH, SOL...)"
-          className="w-full bg-[#151922] border border-slate-800/80 rounded-full pl-9 pr-4 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#f0b90b]/50 transition-colors"
+          className="w-full bg-[#060e1c] border border-[#142848] rounded-full pl-9 pr-4 py-2 text-xs sm:text-sm text-white placeholder-[#5c7395] focus:outline-none focus:border-[#e2ff3b]/60 focus:ring-1 focus:ring-[#e2ff3b]/30 transition-all"
         />
         {searchQuery && (
           <button
             onClick={() => setSearchQuery("")}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#7c93b2] hover:text-white text-xs"
           >
             Clear
           </button>
         )}
       </div>
 
-      {/* 3. Total Balance Card (Authentic Exchange Layout) */}
-      <div className="bg-[#121620] border border-slate-800/90 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden">
-        <div className="flex items-center justify-between gap-3">
+      {/* 3. Total Balance Card (Midnight Blue, Ocean Border, Acid Yellow Hero Balance & Button) */}
+      <div className="bg-gradient-to-b from-[#0a182e] via-[#071224] to-[#050d1a] border border-[#16345e] rounded-2xl p-4 sm:p-5 shadow-2xl relative overflow-hidden">
+        {/* Ambient Oceanic Glow */}
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-[#0ea5e9]/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex items-center justify-between gap-3 relative z-10">
           <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 text-slate-400 text-xs sm:text-sm font-medium">
+            <div className="flex items-center gap-2 text-[#8ea2be] text-xs sm:text-sm font-medium">
               <span>Total Balance</span>
               <button
                 onClick={() => setShowBalance((s) => !s)}
-                className="text-slate-400 hover:text-slate-200 transition-colors p-0.5 focus:outline-none"
+                className="text-[#7c93b2] hover:text-[#e2ff3b] transition-colors p-0.5 focus:outline-none"
                 title={showBalance ? "Hide balance" : "Show balance"}
               >
                 {showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
               </button>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl sm:text-4xl font-extrabold text-[#f3ba2f] font-mono tracking-tight">
+              <span className="text-3xl sm:text-4xl font-black text-[#e2ff3b] font-mono tracking-tight drop-shadow-[0_0_20px_rgba(226,255,59,0.3)]">
                 {showBalance
                   ? formatMoney(realAvailable, currency).replace("USDT", "").replace("$", "").trim()
                   : "••••••"}
               </span>
-              <span className="text-xs sm:text-sm font-bold text-slate-400">
+              <span className="text-xs sm:text-sm font-bold text-[#38bdf8]">
                 {currency === "USD" ? "USDT" : currency}
               </span>
             </div>
           </div>
 
-          {/* Gold Pill Deposit Button */}
+          {/* Hero Acid Yellow Pill Deposit Button */}
           <button
             onClick={() => onOpenDeposit("DEPOSIT")}
-            className="bg-[#e8b85c] hover:bg-[#dfad50] text-[#1c180e] font-black px-6 py-2.5 rounded-full text-xs sm:text-sm shadow-md transition-all active:scale-95 hover:brightness-105 shrink-0"
+            className="bg-[#e2ff3b] hover:bg-[#d5f32a] text-[#050b14] font-black px-6 py-2.5 rounded-full text-xs sm:text-sm shadow-lg shadow-[#e2ff3b]/25 transition-all active:scale-95 hover:brightness-105 shrink-0"
           >
             Deposit
           </button>
         </div>
 
         {/* Secondary Account Metrics Strip */}
-        <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-800/80 text-[11px]">
+        <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-[#142848] text-[11px] relative z-10">
           <div>
-            <span className="text-slate-500 uppercase block font-semibold text-[9px]">Equity</span>
-            <span className="font-mono font-bold text-emerald-400">
+            <span className="text-[#5c7395] uppercase block font-semibold text-[9px]">Equity</span>
+            <span className="font-mono font-bold text-[#38bdf8]">
               {showBalance ? formatMoney(realEquity, currency) : "••••••"}
             </span>
           </div>
           <div>
-            <span className="text-slate-500 uppercase block font-semibold text-[9px]">Free Margin</span>
-            <span className="font-mono font-bold text-slate-300">
+            <span className="text-[#5c7395] uppercase block font-semibold text-[9px]">Free Margin</span>
+            <span className="font-mono font-bold text-[#7dd3fc]">
               {showBalance ? formatMoney(realBal?.freeMargin ?? realAvailable, currency) : "••••••"}
             </span>
           </div>
           <div>
-            <span className="text-slate-500 uppercase block font-semibold text-[9px]">Deposited</span>
-            <span className="font-mono font-bold text-slate-300">
+            <span className="text-[#5c7395] uppercase block font-semibold text-[9px]">Deposited</span>
+            <span className="font-mono font-bold text-slate-200">
               {showBalance ? formatMoney(realDeposited, currency) : "••••••"}
             </span>
           </div>
@@ -285,10 +279,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           onClick={() => onOpenDeposit("DEPOSIT")}
           className="flex flex-col items-center justify-center gap-1.5 group active:scale-95 transition-transform"
         >
-          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#1c2230] group-hover:bg-[#252c3d] border border-slate-700/60 flex items-center justify-center shadow-lg transition-colors">
-            <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
+          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#0a182e] group-hover:bg-[#0f2444] border border-[#163660] group-hover:border-[#e2ff3b]/50 flex items-center justify-center shadow-xl transition-all">
+            <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-[#38bdf8] group-hover:text-[#e2ff3b] transition-colors" />
           </div>
-          <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">
+          <span className="text-xs font-semibold text-[#8ea2be] group-hover:text-white transition-colors">
             Deposit
           </span>
         </button>
@@ -298,10 +292,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           onClick={() => onOpenDeposit("WITHDRAW")}
           className="flex flex-col items-center justify-center gap-1.5 group active:scale-95 transition-transform"
         >
-          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#1c2230] group-hover:bg-[#252c3d] border border-slate-700/60 flex items-center justify-center shadow-lg transition-colors">
-            <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
+          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#0a182e] group-hover:bg-[#0f2444] border border-[#163660] group-hover:border-[#e2ff3b]/50 flex items-center justify-center shadow-xl transition-all">
+            <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-[#38bdf8] group-hover:text-[#e2ff3b] transition-colors" />
           </div>
-          <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">
+          <span className="text-xs font-semibold text-[#8ea2be] group-hover:text-white transition-colors">
             Withdrawal
           </span>
         </button>
@@ -311,10 +305,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           onClick={onNavigateToReferrals}
           className="flex flex-col items-center justify-center gap-1.5 group active:scale-95 transition-transform"
         >
-          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#1c2230] group-hover:bg-[#252c3d] border border-slate-700/60 flex items-center justify-center shadow-lg transition-colors">
-            <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
+          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#0a182e] group-hover:bg-[#0f2444] border border-[#163660] group-hover:border-[#e2ff3b]/50 flex items-center justify-center shadow-xl transition-all">
+            <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-[#38bdf8] group-hover:text-[#e2ff3b] transition-colors" />
           </div>
-          <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">
+          <span className="text-xs font-semibold text-[#8ea2be] group-hover:text-white transition-colors">
             Invite
           </span>
         </button>
@@ -324,51 +318,51 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           onClick={() => setIsMoreOpen((v) => !v)}
           className="flex flex-col items-center justify-center gap-1.5 group active:scale-95 transition-transform"
         >
-          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#1c2230] group-hover:bg-[#252c3d] border border-slate-700/60 flex items-center justify-center shadow-lg transition-colors">
-            <LayoutGrid className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
+          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#0a182e] group-hover:bg-[#0f2444] border border-[#163660] group-hover:border-[#e2ff3b]/50 flex items-center justify-center shadow-xl transition-all">
+            <LayoutGrid className="w-5 h-5 sm:w-6 sm:h-6 text-[#38bdf8] group-hover:text-[#e2ff3b] transition-colors" />
           </div>
-          <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">
+          <span className="text-xs font-semibold text-[#8ea2be] group-hover:text-white transition-colors">
             More
           </span>
         </button>
       </div>
 
-      {/* 5. One-Click Copy Trading Promotional Banner (Futuristic Hologram) */}
+      {/* 5. One-Click Copy Trading Promotional Banner (Futuristic Ocean Hologram + Acid Accents) */}
       <div
         onClick={onNavigateToMike}
         role="button"
         tabIndex={0}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#030a1c] via-[#081533] to-[#040c24] border border-cyan-900/40 hover:border-cyan-500/50 p-4 sm:p-5 cursor-pointer shadow-xl transition-all group"
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#030c1c] via-[#081a38] to-[#040e24] border border-[#143564] hover:border-[#0ea5e9]/60 p-4 sm:p-5 cursor-pointer shadow-2xl transition-all group"
       >
         <div className="flex items-center justify-between gap-4">
           {/* Holographic Glowing Bitcoin Core */}
           <div className="relative flex items-center justify-center shrink-0 w-20 h-20 sm:w-24 sm:h-24">
-            <div className="absolute inset-0 rounded-full bg-cyan-500/20 blur-xl group-hover:bg-cyan-500/30 transition-all" />
-            <div className="absolute inset-1 rounded-full border border-cyan-400/40 border-dashed animate-spin" style={{ animationDuration: "12s" }} />
-            <div className="absolute inset-3 rounded-full border border-cyan-300/60 shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-tr from-cyan-600 via-blue-500 to-cyan-400 flex items-center justify-center text-slate-950 font-black text-lg sm:text-xl shadow-lg shadow-cyan-500/50">
+            <div className="absolute inset-0 rounded-full bg-[#0ea5e9]/20 blur-xl group-hover:bg-[#0ea5e9]/30 transition-all" />
+            <div className="absolute inset-1 rounded-full border border-[#0ea5e9]/50 border-dashed animate-spin" style={{ animationDuration: "12s" }} />
+            <div className="absolute inset-3 rounded-full border border-[#38bdf8] shadow-[0_0_15px_rgba(56,189,248,0.6)]" />
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-tr from-[#0284c7] via-[#0ea5e9] to-[#e2ff3b] flex items-center justify-center text-[#050b14] font-black text-lg sm:text-xl shadow-lg shadow-[#0ea5e9]/50">
               ₿
             </div>
           </div>
 
           {/* Copy Trading Information */}
           <div className="flex-1 min-w-0 pr-8">
-            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-cyan-400 mb-0.5">
-              <Sparkles className="w-3 h-3 text-cyan-400" />
+            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-[#38bdf8] mb-0.5">
+              <Sparkles className="w-3 h-3 text-[#e2ff3b]" />
               <span>QUANTITATIVE AUTO-TRADE</span>
             </div>
-            <h3 className="text-base sm:text-lg font-extrabold text-white tracking-tight leading-tight group-hover:text-cyan-200 transition-colors">
+            <h3 className="text-base sm:text-lg font-extrabold text-white tracking-tight leading-tight group-hover:text-[#7dd3fc] transition-colors">
               One-click copy trading
             </h3>
-            <p className="text-xs sm:text-sm text-cyan-300 font-medium mt-0.5 flex items-center gap-1">
-              <span className="text-cyan-400 font-bold">&gt;&gt;&gt;</span>
+            <p className="text-xs sm:text-sm text-[#e2ff3b] font-bold mt-0.5 flex items-center gap-1">
+              <span className="text-[#38bdf8]">&gt;&gt;&gt;</span>
               <span>easily generate profits.</span>
             </p>
           </div>
 
           {/* 1/2 Indicator Badge */}
           <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-[#c9a762] text-slate-950 shadow-sm">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black bg-[#e2ff3b] text-[#050b14] shadow-sm">
               1/2
             </span>
           </div>
@@ -377,18 +371,18 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
       {/* 6. Market Category Tabs & Section Header */}
       <div className="pt-2">
-        <div className="flex items-center gap-6 border-b border-slate-800 pb-2">
+        <div className="flex items-center gap-6 border-b border-[#142848] pb-2">
           <button
             onClick={() => setCategoryTab("hot")}
             className={`text-sm sm:text-base font-bold transition-colors relative ${
               categoryTab === "hot"
-                ? "text-[#f0b90b]"
-                : "text-slate-400 hover:text-white"
+                ? "text-[#e2ff3b]"
+                : "text-[#7c93b2] hover:text-white"
             }`}
           >
             Hot
             {categoryTab === "hot" && (
-              <span className="absolute -bottom-2 inset-x-0 h-0.5 bg-[#f0b90b] rounded-full" />
+              <span className="absolute -bottom-2 inset-x-0 h-0.5 bg-[#e2ff3b] shadow-[0_0_10px_rgba(226,255,59,0.7)] rounded-full" />
             )}
           </button>
 
@@ -396,13 +390,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             onClick={() => setCategoryTab("favorites")}
             className={`text-sm sm:text-base font-bold transition-colors relative ${
               categoryTab === "favorites"
-                ? "text-[#f0b90b]"
-                : "text-slate-400 hover:text-white"
+                ? "text-[#e2ff3b]"
+                : "text-[#7c93b2] hover:text-white"
             }`}
           >
             Self Service
             {categoryTab === "favorites" && (
-              <span className="absolute -bottom-2 inset-x-0 h-0.5 bg-[#f0b90b] rounded-full" />
+              <span className="absolute -bottom-2 inset-x-0 h-0.5 bg-[#e2ff3b] shadow-[0_0_10px_rgba(226,255,59,0.7)] rounded-full" />
             )}
           </button>
 
@@ -410,42 +404,42 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             onClick={() => setCategoryTab("options")}
             className={`text-sm sm:text-base font-bold transition-colors relative ${
               categoryTab === "options"
-                ? "text-[#f0b90b]"
-                : "text-slate-400 hover:text-white"
+                ? "text-[#e2ff3b]"
+                : "text-[#7c93b2] hover:text-white"
             }`}
           >
             Options
             {categoryTab === "options" && (
-              <span className="absolute -bottom-2 inset-x-0 h-0.5 bg-[#f0b90b] rounded-full" />
+              <span className="absolute -bottom-2 inset-x-0 h-0.5 bg-[#e2ff3b] shadow-[0_0_10px_rgba(226,255,59,0.7)] rounded-full" />
             )}
           </button>
         </div>
 
-        <div className="mt-2 text-xs font-bold text-[#f0b90b]">
-          {categoryTab === "options" ? "Options & Commodities" : categoryTab === "favorites" ? "Watchlist" : "Options"}
+        <div className="mt-2 text-xs font-bold text-[#e2ff3b]">
+          {categoryTab === "options" ? "Options & Forex" : categoryTab === "favorites" ? "Watchlist" : "Options"}
         </div>
       </div>
 
       {/* 7. Market Table Header */}
-      <div className="grid grid-cols-12 text-slate-400 text-xs font-semibold px-2 py-1.5 select-none">
+      <div className="grid grid-cols-12 text-[#7c93b2] text-xs font-semibold px-2 py-1.5 select-none">
         <div className="col-span-5 flex items-center gap-1">
           <span>Crypto</span>
-          <span className="text-[10px] text-slate-500">↕</span>
+          <span className="text-[10px] text-[#5c7395]">↕</span>
         </div>
         <div className="col-span-4 text-right flex items-center justify-end gap-1">
           <span>Last Price</span>
-          <span className="text-[10px] text-slate-500">↕</span>
+          <span className="text-[10px] text-[#5c7395]">↕</span>
         </div>
         <div className="col-span-3 text-right flex items-center justify-end gap-1">
           <span>24h %</span>
-          <span className="text-[10px] text-slate-500">↕</span>
+          <span className="text-[10px] text-[#5c7395]">↕</span>
         </div>
       </div>
 
       {/* 8. Crypto Coin List Rows */}
       <div className="space-y-1">
         {filteredAssets.length === 0 ? (
-          <div className="text-center py-10 bg-[#121620] rounded-xl border border-dashed border-slate-800 text-slate-400 text-xs">
+          <div className="text-center py-10 bg-[#071324] rounded-xl border border-dashed border-[#142848] text-[#7c93b2] text-xs">
             No instruments found matching &quot;{searchQuery}&quot;.
           </div>
         ) : (
@@ -461,7 +455,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 onClick={() => onNavigateToTrade("REAL", asset)}
                 role="button"
                 tabIndex={0}
-                className="grid grid-cols-12 items-center bg-[#121620]/60 hover:bg-[#151c2a] border border-slate-800/60 hover:border-slate-700/80 rounded-xl px-2.5 py-3 transition-all active:scale-[0.99] cursor-pointer group"
+                className="grid grid-cols-12 items-center bg-[#071324]/85 hover:bg-[#0c1c34] border border-[#122544] hover:border-[#1d4274] rounded-xl px-2.5 py-3 transition-all active:scale-[0.99] cursor-pointer group shadow-sm"
               >
                 {/* Coin Icon & Name */}
                 <div className="col-span-5 flex items-center gap-2.5 min-w-0">
@@ -472,16 +466,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1">
-                      <span className="font-extrabold text-xs sm:text-sm text-white group-hover:text-cyan-400 transition-colors truncate">
+                      <span className="font-extrabold text-xs sm:text-sm text-white group-hover:text-[#e2ff3b] transition-colors truncate">
                         {symbolBase}
                       </span>
                       {quoteCurrency && (
-                        <span className="text-[10px] text-slate-400 font-medium">
+                        <span className="text-[10px] text-[#7c93b2] font-medium">
                           {quoteCurrency}
                         </span>
                       )}
                     </div>
-                    <div className="text-[10px] text-slate-500 font-mono hidden xs:block">
+                    <div className="text-[10px] text-[#5c7395] font-mono hidden xs:block">
                       {asset.assetClass}
                     </div>
                   </div>
@@ -489,7 +483,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
                 {/* Last Price */}
                 <div className="col-span-4 text-right pr-2">
-                  <div className="font-mono font-bold text-xs sm:text-sm text-white group-hover:text-cyan-200 transition-colors">
+                  <div className="font-mono font-bold text-xs sm:text-sm text-white group-hover:text-[#e2ff3b] transition-colors">
                     {asset.currentPrice.toLocaleString("en-US", {
                       minimumFractionDigits: asset.digits,
                       maximumFractionDigits: asset.digits,
@@ -514,19 +508,19 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         )}
       </div>
 
-      {/* 9. Open Positions Section (Collapsible / Active) */}
+      {/* 9. Open Positions Section */}
       {activeTrades.length > 0 && (
-        <div className="bg-[#121620] border border-slate-800 rounded-2xl p-4 shadow-lg mt-4">
+        <div className="bg-[#071324] border border-[#142848] rounded-2xl p-4 shadow-xl mt-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-[#f0b90b]" />
+              <Layers className="w-4 h-4 text-[#e2ff3b]" />
               <h3 className="font-extrabold text-xs sm:text-sm text-white uppercase tracking-wider">
                 Open Positions ({activeTrades.length})
               </h3>
             </div>
             <button
               onClick={() => onNavigateToTrade("REAL")}
-              className="text-xs text-cyan-400 hover:underline font-bold"
+              className="text-xs text-[#38bdf8] hover:text-[#e2ff3b] hover:underline font-bold"
             >
               Open Terminal
             </button>
@@ -539,7 +533,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               return (
                 <div
                   key={trade.id}
-                  className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-2"
+                  className="bg-[#050c18] border border-[#142848] rounded-xl p-3 flex items-center justify-between gap-2"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span
@@ -553,7 +547,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     </span>
                     <div>
                       <div className="font-extrabold text-xs text-white">{trade.symbol}</div>
-                      <div className="text-[10px] text-slate-500">
+                      <div className="text-[10px] text-[#5c7395]">
                         {trade.size} @ ${trade.entryPrice}
                       </div>
                     </div>
@@ -586,17 +580,17 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 animate-fade-in"
+          className="fixed inset-0 z-50 bg-[#040810]/80 backdrop-blur-md flex items-end sm:items-center justify-center p-3 animate-fade-in"
         >
-          <div className="bg-[#121622] border border-slate-800 rounded-2xl w-full max-w-md p-4 sm:p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="bg-[#081324] border border-[#142848] rounded-2xl w-full max-w-md p-4 sm:p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#142848] pb-3">
               <div className="flex items-center gap-2">
-                <LayoutGrid className="w-5 h-5 text-cyan-400" />
+                <LayoutGrid className="w-5 h-5 text-[#38bdf8]" />
                 <h3 className="font-extrabold text-sm text-white">Platform Services & Actions</h3>
               </div>
               <button
                 onClick={() => setIsMoreOpen(false)}
-                className="text-slate-400 hover:text-white p-1"
+                className="text-[#7c93b2] hover:text-white p-1"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -608,11 +602,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   setIsMoreOpen(false);
                   onNavigateToMike();
                 }}
-                className="bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 p-3 rounded-xl text-left transition-colors flex flex-col gap-1"
+                className="bg-[#0a182e] hover:bg-[#0f2444] border border-[#163660] hover:border-[#e2ff3b]/40 p-3 rounded-xl text-left transition-colors flex flex-col gap-1"
               >
-                <Sparkles className="w-4 h-4 text-cyan-400" />
+                <Sparkles className="w-4 h-4 text-[#e2ff3b]" />
                 <span className="font-bold text-xs text-white">Mike AI Assistant</span>
-                <span className="text-[10px] text-slate-400">Quantitative insights & trading</span>
+                <span className="text-[10px] text-[#7c93b2]">Quantitative insights & trading</span>
               </button>
 
               <button
@@ -620,11 +614,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   setIsMoreOpen(false);
                   onNavigateToReferrals();
                 }}
-                className="bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 p-3 rounded-xl text-left transition-colors flex flex-col gap-1"
+                className="bg-[#0a182e] hover:bg-[#0f2444] border border-[#163660] hover:border-[#e2ff3b]/40 p-3 rounded-xl text-left transition-colors flex flex-col gap-1"
               >
-                <Gift className="w-4 h-4 text-amber-400" />
+                <Gift className="w-4 h-4 text-[#38bdf8]" />
                 <span className="font-bold text-xs text-white">Invite & Bonus</span>
-                <span className="text-[10px] text-slate-400">$30.00 USDT per qualified friend</span>
+                <span className="text-[10px] text-[#7c93b2]">$30.00 USDT per qualified friend</span>
               </button>
 
               <button
@@ -632,11 +626,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   setIsMoreOpen(false);
                   onOpenDeposit("DEPOSIT");
                 }}
-                className="bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 p-3 rounded-xl text-left transition-colors flex flex-col gap-1"
+                className="bg-[#0a182e] hover:bg-[#0f2444] border border-[#163660] hover:border-[#e2ff3b]/40 p-3 rounded-xl text-left transition-colors flex flex-col gap-1"
               >
-                <Wallet className="w-4 h-4 text-emerald-400" />
+                <Wallet className="w-4 h-4 text-[#e2ff3b]" />
                 <span className="font-bold text-xs text-white">Deposit USDT</span>
-                <span className="text-[10px] text-slate-400">Instant TRC20 Ledger</span>
+                <span className="text-[10px] text-[#7c93b2]">Instant TRC20 Ledger</span>
               </button>
 
               <button
@@ -644,30 +638,30 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   setIsMoreOpen(false);
                   onOpenDeposit("WITHDRAW");
                 }}
-                className="bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 p-3 rounded-xl text-left transition-colors flex flex-col gap-1"
+                className="bg-[#0a182e] hover:bg-[#0f2444] border border-[#163660] hover:border-[#e2ff3b]/40 p-3 rounded-xl text-left transition-colors flex flex-col gap-1"
               >
                 <CreditCard className="w-4 h-4 text-rose-400" />
                 <span className="font-bold text-xs text-white">Withdraw Funds</span>
-                <span className="text-[10px] text-slate-400">Secure automated payout</span>
+                <span className="text-[10px] text-[#7c93b2]">Secure automated payout</span>
               </button>
             </div>
 
             {/* Level Tier Status inside More */}
-            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3">
+            <div className="bg-[#050c18] border border-[#142848] rounded-xl p-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400">Tier Status:</span>
-                <span className="font-bold text-[#f0b90b]">
+                <span className="text-[#7c93b2]">Tier Status:</span>
+                <span className="font-bold text-[#e2ff3b]">
                   {levelInfo && levelInfo.effectiveLevel > 0
                     ? `Level ${levelInfo.effectiveLevel} VIP`
                     : "Active Trader"}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs mt-1">
-                <span className="text-slate-400">Referral Code:</span>
-                <div className="flex items-center gap-1.5 font-mono text-cyan-400 font-bold">
+                <span className="text-[#7c93b2]">Referral Code:</span>
+                <div className="flex items-center gap-1.5 font-mono text-[#38bdf8] font-bold">
                   <span>{referrals?.code || "------"}</span>
-                  <button onClick={copyReferralCode} className="text-slate-400 hover:text-white">
-                    {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <button onClick={copyReferralCode} className="text-[#7c93b2] hover:text-white">
+                    {copiedCode ? <Check className="w-3.5 h-3.5 text-[#e2ff3b]" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
@@ -675,7 +669,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
             <button
               onClick={() => setIsMoreOpen(false)}
-              className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 rounded-xl text-xs transition-colors"
+              className="w-full bg-[#0a182e] hover:bg-[#0f2444] border border-[#163660] text-white font-bold py-2 rounded-xl text-xs transition-colors"
             >
               Close
             </button>

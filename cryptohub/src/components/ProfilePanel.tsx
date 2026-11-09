@@ -166,7 +166,7 @@ export const ProfilePanel: React.FC<ProfilePanelProps> = ({
                 <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-950 text-emerald-300 border border-emerald-700">
                   REAL LIVE ACCOUNT
                 </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-[#e2ff3b]/15 text-[#e2ff3b] border border-[#e2ff3b]/40 shadow-[0_0_10px_rgba(226,255,59,0.2)]">
                   ★ VIP TRADER
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-800 text-slate-300 border border-slate-700">
