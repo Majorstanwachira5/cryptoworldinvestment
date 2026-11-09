@@ -220,12 +220,39 @@ class DatabaseStore {
 
   private accountsFor(userId: string): { REAL: AccountState } {
     const existing = this.state.accounts[userId];
-    if (existing && existing.REAL) return existing;
+    if (existing && existing.REAL) {
+      const hasWelcome = existing.REAL.ledger.some(
+        (e) => e.type === "WELCOME_BONUS" || e.description.includes("Welcome Registration Capital")
+      );
+      if (!hasWelcome) {
+        const now = new Date().toISOString();
+        existing.REAL.ledger.unshift({
+          id: `led_bonus_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          userId,
+          accountType: "REAL",
+          type: "WELCOME_BONUS",
+          amount: REAL_STARTING_CAPITAL,
+          currency: "USDT",
+          balanceAfter: REAL_STARTING_CAPITAL,
+          description: "Welcome Registration Capital Bonus ($5.00 USDT)",
+          status: "CONFIRMED",
+          timestamp: now,
+          createdAt: now,
+        });
+        const ledgerSum = Math.round(existing.REAL.ledger.reduce((s, e) => s + e.amount, 0) * 100) / 100;
+        existing.REAL.balance.availableBalance = ledgerSum;
+        existing.REAL.balance.equity = ledgerSum;
+        existing.REAL.balance.freeMargin = ledgerSum;
+        this.persistNow();
+      }
+      return existing;
+    }
 
     const created = {
       REAL: existing?.REAL ?? freshAccount(userId),
     };
     this.state.accounts[userId] = created;
+    this.persistNow();
     return created;
   }
 

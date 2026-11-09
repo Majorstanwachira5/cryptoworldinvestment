@@ -168,17 +168,6 @@ function TradingPlatformContent() {
     fetchMarketSeries();
   }, [fetchMarketSeries]);
 
-  // Refresh the live quote on a short interval so the header price tracks the
-  // market. The series itself only changes when the instrument or timeframe
-  // changes, which keeps the user's zoom intact.
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const timer = setInterval(() => {
-      fetchTicker();
-    }, 15000);
-    return () => clearInterval(timer);
-  }, [isAuthenticated, fetchTicker]);
-
   // Fetch Balance & User Profile for specified accountType
   const fetchBalanceAndUser = useCallback(
     async (type?: AccountType) => {
@@ -188,13 +177,28 @@ function TradingPlatformContent() {
         const res = await authFetch(`/api/ledger/balance?account_type=${targetType}`);
         const data = await res.json();
         if (data.user) setUser(data.user);
-        if (data.balance) setBalance(data.balance);
+        if (data.balance) {
+          setBalance(data.balance);
+          setProfile((prev) => (prev ? { ...prev, real: data.balance } : prev));
+        }
       } catch (err) {
         console.error("Failed to fetch balance:", err);
       }
     },
     [isAuthenticated]
   );
+
+  // Refresh the live quote on a short interval so the header price tracks the
+  // market. The series itself only changes when the instrument or timeframe
+  // changes, which keeps the user's zoom intact.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const timer = setInterval(() => {
+      fetchTicker();
+      fetchBalanceAndUser();
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [isAuthenticated, fetchTicker, fetchBalanceAndUser]);
 
   // Fetch Positions for specified accountType
   const fetchPositions = useCallback(
@@ -207,7 +211,10 @@ function TradingPlatformContent() {
         const newTrades = data.trades || [];
         setTrades(newTrades);
         tradesRef.current = newTrades;
-        if (data.balance) setBalance(data.balance);
+        if (data.balance) {
+          setBalance(data.balance);
+          setProfile((prev) => (prev ? { ...prev, real: data.balance } : prev));
+        }
       } catch (err) {
         console.error("Failed to fetch positions:", err);
       }
@@ -270,6 +277,7 @@ function TradingPlatformContent() {
       if (!res.ok) return;
       const data = await res.json();
       setProfile(data);
+      if (data.real) setBalance(data.real);
       if (data.fx?.usdKes) setUsdKesRate(data.fx.usdKes);
     } catch (err) {
       // A rejected token means the session died; send the user back to sign-in
@@ -994,7 +1002,9 @@ asset={selectedAsset}
             user={user}
             onDepositSuccess={(newBal) => {
               setBalance(newBal);
+              setProfile((prev) => (prev ? { ...prev, real: newBal } : prev));
               fetchBalanceAndUser(accountType);
+              fetchProfile();
               showToast("success", "Deposit Verified", "Capital credited to available balance.");
             }}
           />

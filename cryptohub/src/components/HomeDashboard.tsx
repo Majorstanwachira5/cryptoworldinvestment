@@ -97,10 +97,23 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     };
   }, [balance?.availableBalance]);
 
-  const realBal = profile?.real ?? balance;
-  const realAvailable = realBal?.availableBalance ?? 0;
-  const realEquity = realBal?.equity ?? 0;
-  const realDeposited = realBal?.totalDeposited ?? 0;
+  const realBal = balance ?? profile?.real;
+  const realAvailable =
+    balance?.availableBalance !== undefined && balance.availableBalance !== null
+      ? balance.availableBalance
+      : profile?.real?.availableBalance ?? 0;
+  const realEquity =
+    balance?.equity !== undefined && balance.equity !== null
+      ? balance.equity
+      : profile?.real?.equity ?? realAvailable;
+  const realDeposited =
+    balance?.totalDeposited !== undefined && balance.totalDeposited !== null
+      ? balance.totalDeposited
+      : profile?.real?.totalDeposited ?? 0;
+  const realFreeMargin =
+    balance?.freeMargin !== undefined && balance.freeMargin !== null
+      ? balance.freeMargin
+      : profile?.real?.freeMargin ?? realAvailable;
 
   const activeTrades = trades.filter((t) => t.status === "OPEN");
 
@@ -233,11 +246,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <div className="flex items-baseline gap-2">
               <span className="text-3xl sm:text-4xl font-black text-[#e2ff3b] font-mono tracking-tight drop-shadow-[0_0_20px_rgba(226,255,59,0.3)]">
                 {showBalance
-                  ? formatMoney(realAvailable, currency).replace("USDT", "").replace("$", "").trim()
+                  ? (currency === "KES"
+                      ? (realAvailable * (usdKesRate || 129.5)).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                      : realAvailable.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
                   : "••••••"}
               </span>
               <span className="text-xs sm:text-sm font-bold text-[#38bdf8]">
-                {currency === "USD" ? "USDT" : currency}
+                {currency === "USD" ? "USDT" : "KES"}
               </span>
             </div>
 
@@ -282,7 +297,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <div>
             <span className="text-[#5c7395] uppercase block font-semibold text-[9px]">Free Margin</span>
             <span className="font-mono font-bold text-[#7dd3fc]">
-              {showBalance ? formatMoney(realBal?.freeMargin ?? realAvailable, currency) : "••••••"}
+              {showBalance ? formatMoney(realFreeMargin, currency) : "••••••"}
             </span>
           </div>
           <div>
