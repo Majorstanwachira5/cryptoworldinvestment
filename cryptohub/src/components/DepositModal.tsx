@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import confetti from "canvas-confetti";
 import { User, Balance } from "@/types";
 import { authFetch } from "@/lib/auth/session";
 import {
@@ -198,6 +199,16 @@ export const DepositModal: React.FC<DepositModalProps> = ({
 
       const data = await res.json();
       if (data.success) {
+        try {
+          confetti({
+            particleCount: 120,
+            spread: 85,
+            origin: { y: 0.6 },
+            colors: ["#38bdf8", "#e2ff3b", "#10b981", "#ffffff"],
+          });
+        } catch {
+          /* ignore */
+        }
         setSuccessNotice(data.message);
         setWithdrawAddress("");
         fetchHistoryAndIntent();

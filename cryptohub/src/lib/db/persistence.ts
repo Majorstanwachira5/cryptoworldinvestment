@@ -24,13 +24,15 @@ function resolveDataDir(): string {
     candidates.push(process.env.DATA_DIR);
   }
 
+  // Look in cryptohub/data and cwd/data for local dev persistence
+  candidates.push(path.join(process.cwd(), "cryptohub", "data"));
+  candidates.push(path.join(process.cwd(), "data"));
+
   // On Vercel / serverless runtime, /tmp is the guaranteed writable directory
   if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
     candidates.push(path.join("/tmp", "cryptohub-data"));
   }
 
-  // Local development fallback
-  candidates.push(path.join(process.cwd(), "data"));
   candidates.push(path.join(os.tmpdir(), "cryptohub-data"));
   candidates.push(path.join("/tmp", "cryptohub-data"));
 
@@ -76,22 +78,22 @@ function fileFor(name: string): string {
   return path.join(ensureDir(), `${name}.json`);
 }
 
-export function loadState<T>(name: string): T | null {
-  if (memoryCache.has(name)) {
+export function loadState<T>(name: string, forceReload = false): T | null {
+  if (!forceReload && memoryCache.has(name)) {
     return memoryCache.get(name) as T;
   }
 
   try {
     const file = fileFor(name);
-    if (!fs.existsSync(file)) return null;
+    if (!fs.existsSync(file)) return memoryCache.has(name) ? (memoryCache.get(name) as T) : null;
     const raw = fs.readFileSync(file, "utf8");
-    if (!raw.trim()) return null;
+    if (!raw.trim()) return memoryCache.has(name) ? (memoryCache.get(name) as T) : null;
     const parsed = JSON.parse(raw) as T;
     memoryCache.set(name, parsed);
     return parsed;
   } catch (error) {
     console.warn(`[db] could not read ${name}.json from disk:`, (error as Error).message);
-    return null;
+    return memoryCache.has(name) ? (memoryCache.get(name) as T) : null;
   }
 }
 

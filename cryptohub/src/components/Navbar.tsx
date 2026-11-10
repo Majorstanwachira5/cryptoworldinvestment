@@ -147,14 +147,14 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: "MIKE_AI", label: "Mike AI", icon: Sparkles },
   ];
 
-  const userName = user?.name || (user?.id ? `Trader #${user.id.slice(0, 6)}` : "Live Trader");
-  const userEmail = user?.email || (user?.id ? `uid_${user.id.slice(0, 8)}` : "");
+  const userName = user?.name || "Live Trader";
+  const userEmail = user?.email || "";
   const userInitials = userName
     .split(" ")
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase() || (user?.id ? "TR" : "CW");
+    .toUpperCase() || "CW";
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[#142848] bg-[#060c18]/95 dark:bg-[#060c18]/95 light:bg-white/95 backdrop-blur-md transition-colors">
@@ -476,23 +476,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="px-3 py-2 border-b border-[#142848] mb-1">
                   <div className="font-extrabold text-sm text-white truncate">{userName}</div>
                   <div className="text-[11px] text-slate-400 truncate">
-                    {userEmail || (user?.id ? `UID: ${user.id}` : "Session Active")}
+                    {userEmail || "Session Active"}
                   </div>
                   <div className="flex items-center gap-1.5 mt-1.5">
-                    {user?.id ? (
-                      <>
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-[#071d3a] text-[#38bdf8] border border-[#144588]">
-                          REAL • ACTIVE
-                        </span>
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-[#081224] text-slate-400 border border-[#142848]">
-                          UID: {user.id.slice(0, 8)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-[#071d3a] text-[#38bdf8] border border-[#144588]">
-                        REAL ACCOUNT
-                      </span>
-                    )}
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-[#071d3a] text-[#38bdf8] border border-[#144588]">
+                      REAL • ACTIVE
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-[#081224] text-emerald-400 border border-emerald-900/60">
+                      VERIFIED
+                    </span>
                   </div>
                 </div>
 
@@ -510,28 +502,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span className="font-semibold">My Profile &amp; Settings</span>
                   </button>
                 )}
-
-                <button
-                  role="menuitem"
-                  onClick={() => {
-                    onOpenLedger();
-                    setIsAccountOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors text-left"
-                >
-                  <FileText className="w-4 h-4 text-cyan-400" />
-                  <span className="font-semibold">Double-Entry Audit Ledger</span>
-                </button>
-
-                <Link
-                  href="/api-docs"
-                  role="menuitem"
-                  onClick={() => setIsAccountOpen(false)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors text-left"
-                >
-                  <BookOpen className="w-4 h-4 text-cyan-400" />
-                  <span className="font-semibold">Swagger API Docs</span>
-                </Link>
 
                 {/* Sign Out */}
                 {onLogout && (

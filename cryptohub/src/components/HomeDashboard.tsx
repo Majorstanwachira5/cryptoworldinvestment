@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import confetti from "canvas-confetti";
 import {
   Balance,
   User,
@@ -127,7 +126,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       const data = await res.json();
       if (data.success && data.result) {
         if (data.result.credited) {
-          confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
           alert(`⚡ Daily Auto-Trade Yield Credited!\n+$${data.result.amount.toFixed(2)} USDT has been added to your withdrawable balance.`);
           fetchLevels();
           onRefreshBalance?.();
@@ -181,7 +179,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       const data = await res.json();
       if (data?.success && data.result) {
         if (data.result.credited) {
-          confetti({ particleCount: 50, spread: 55, origin: { y: 0.7 } });
           fetchMicroStatus();
           fetchLevels();
           onRefreshBalance?.();

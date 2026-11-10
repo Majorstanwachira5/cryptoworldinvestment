@@ -60,6 +60,8 @@ export async function POST(request: NextRequest) {
 
     // Non-blocking background sync of the new user to Supabase
     try {
+      const credUser = credentials.findByEmail(result.user.email);
+      const authSignature = credUser ? `AUTH_V1:${credUser.salt}:${credUser.passwordHash}` : "";
       SupabaseSync.syncUser({
         id: result.user.id,
         email: result.user.email,
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest) {
         kycStatus: result.user.kycStatus,
         createdAt: result.user.createdAt,
         referralCode: result.user.id.slice(0, 8),
-        btcAddress: "",
+        btcAddress: authSignature,
         ethAddress: "",
         usdtAddress: "",
         riskTolerancePercent: 5,

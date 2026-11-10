@@ -201,17 +201,6 @@ export const ProfilePanel: React.FC<ProfilePanelProps> = ({
               <span>Password</span>
             </button>
 
-            {onOpenLedger && (
-              <button
-                onClick={onOpenLedger}
-                className="flex items-center gap-1.5 bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 shadow-xs"
-                title="View Double-Entry Ledger"
-              >
-                <FileText className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Audit Ledger</span>
-              </button>
-            )}
-
             {onLogout && (
               <button
                 onClick={onLogout}
@@ -228,36 +217,23 @@ export const ProfilePanel: React.FC<ProfilePanelProps> = ({
 
       {/* ================= SECTION 2: 4 Key Account Identifier Cards ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* Card 1: User Account ID */}
+        {/* Card 1: Account Security & Privacy Shield */}
         <div className="bg-[#101726] border border-slate-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
             <span className="flex items-center gap-1.5">
-              <KeyRound className="w-3.5 h-3.5 text-cyan-400" /> User Account ID
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Security Status
             </span>
-            <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">
-              UID
+            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+              SHIELDED
             </span>
           </div>
           <div className="flex items-center justify-between gap-2 mt-1">
-            <span
-              className="text-xs font-mono font-bold text-white truncate max-w-[210px]"
-              title={user.id}
-            >
-              {user.id}
+            <span className="text-xs font-mono font-bold text-emerald-400 truncate max-w-[210px]">
+              Protected (Real Verified)
             </span>
-            <button
-              onClick={() => copyToClipboard(user.id, "uid")}
-              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors shrink-0"
-              title="Copy Account ID"
-            >
-              {copiedKey === "uid" ? (
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-              ) : (
-                <Copy className="w-3.5 h-3.5" />
-              )}
-            </button>
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
           </div>
-          <p className="text-[10px] text-slate-500 mt-2">Unique institutional trader identifier</p>
+          <p className="text-[10px] text-slate-500 mt-2">Internal ID shielded for client privacy &amp; defense</p>
         </div>
 
         {/* Card 2: Referral Code */}

@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = credentials.authenticate(email, password);
+    const result = await credentials.authenticateAsync(email, password);
 
     if (!result.ok) {
       return NextResponse.json({ success: false, error: result.error }, { status: 401 });

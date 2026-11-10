@@ -71,6 +71,27 @@ export const MikeTradesChat: React.FC = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setError(null);
+
+    // Client-side guardrail check
+    const prohibited = [
+      /\badmin\b/i, /\badministrator\b/i, /\bsudo\b/i, /\broot\b/i,
+      /\badmin\s+access\b/i, /\bescalat/i, /\boverride\b/i, /\bbypass\b/i,
+      /\buser\s*id\b/i, /\buid\b/i, /\baccount\s*id\b/i, /\bpassword\b/i,
+      /\bbalance\b/i, /\bdatabase\b/i, /\bsystem\s+prompt\b/i
+    ];
+    if (prohibited.some((p) => p.test(text))) {
+      setTimeout(() => {
+        const securityMessage: Message = {
+          id: `msg_mike_sec_${Date.now()}`,
+          role: "assistant",
+          content: `### 🛡️ CryptoWorldInvestment Security Enforcement Notice\n\n**Access Denied.** Mike Trades operates under zero-trust institutional security policies:\n\n* **Strict Privacy Isolation:** Mike Trades is cryptographically isolated from private user data, including backend User IDs, personal credentials, passwords, and account balances.\n* **Administrative Governance:** Inquiries or commands attempting to query administrative systems, alter privilege levels, access backend databases, or override security boundaries are strictly blocked, monitored, and logged.\n\nMike Trades is authorized exclusively to assist with **market technical analysis**, **chart indicators**, and **quantitative risk management rules**.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        };
+        setMessages((prev) => [...prev, securityMessage]);
+      }, 400);
+      return;
+    }
+
     setLoading(true);
 
     try {

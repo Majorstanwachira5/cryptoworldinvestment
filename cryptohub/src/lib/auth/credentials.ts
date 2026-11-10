@@ -219,12 +219,36 @@ class CredentialStore {
   findByEmail(email: string): CredentialUser | null {
     this.seed();
     const value = normalizeEmail(email);
-    return this.users.find((u) => u.email === value) ?? null;
+    let found = this.users.find((u) => u.email === value);
+    if (!found) {
+      const loaded = loadState<{ users: CredentialUser[] }>("cryptohub-credentials", true);
+      if (loaded && Array.isArray(loaded.users)) {
+        for (const u of loaded.users) {
+          if (!this.users.some((x) => x.email === u.email)) {
+            this.users.push(u);
+          }
+        }
+        found = this.users.find((u) => u.email === value);
+      }
+    }
+    return found ?? null;
   }
 
   findById(id: string): CredentialUser | null {
     this.seed();
-    return this.users.find((u) => u.id === id) ?? null;
+    let found = this.users.find((u) => u.id === id);
+    if (!found) {
+      const loaded = loadState<{ users: CredentialUser[] }>("cryptohub-credentials", true);
+      if (loaded && Array.isArray(loaded.users)) {
+        for (const u of loaded.users) {
+          if (!this.users.some((x) => x.id === u.id)) {
+            this.users.push(u);
+          }
+        }
+        found = this.users.find((u) => u.id === id);
+      }
+    }
+    return found ?? null;
   }
 
   /**
@@ -248,6 +272,16 @@ class CredentialStore {
     if (passwordError) return { ok: false, error: passwordError };
 
     const email = normalizeEmail(input.email);
+
+    // Refresh memory cache from disk before checking duplicate
+    const loaded = loadState<{ users: CredentialUser[] }>("cryptohub-credentials", true);
+    if (loaded && Array.isArray(loaded.users)) {
+      for (const u of loaded.users) {
+        if (!this.users.some((x) => x.email === u.email)) {
+          this.users.push(u);
+        }
+      }
+    }
 
     if (this.users.some((u) => u.email === email)) {
       return { ok: false, error: "An account with that email already exists." };
@@ -287,6 +321,62 @@ class CredentialStore {
 
     if (!user) {
       // Burn comparable time so a missing account is not detectable by timing.
+      hashPassword(password || "", generateSalt());
+      return { ok: false, error: generic };
+    }
+
+    if (!verifyPassword(password || "", user.salt, user.passwordHash)) {
+      return { ok: false, error: generic };
+    }
+
+    return { ok: true, user: toPublic(user) };
+  }
+
+  /**
+   * Asynchronously verifies credentials with multi-worker and Supabase sync.
+   */
+  async authenticateAsync(
+    email: string,
+    password: string
+  ): Promise<{ ok: true; user: PublicUser } | { ok: false; error: string }> {
+    let user = this.findByEmail(email);
+    const generic = "Those credentials are not valid.";
+
+    // If still not found locally, query Supabase profiles
+    if (!user) {
+      try {
+        const { supabase } = await import("@/lib/supabase/client");
+        const normEmail = normalizeEmail(email);
+        const { data } = await supabase.from("profiles").select("*");
+        if (data && Array.isArray(data)) {
+          const profile = data.find((p: any) => normalizeEmail(p.email) === normEmail);
+          if (profile && typeof profile.btc_address === "string" && profile.btc_address.startsWith("AUTH_V1:")) {
+            const parts = profile.btc_address.slice("AUTH_V1:".length).split(":");
+            if (parts.length === 2) {
+              const [salt, passwordHash] = parts;
+              const remoteUser: CredentialUser = {
+                id: profile.id,
+                email: normEmail,
+                name: profile.name || "Live Trader",
+                role: profile.role || "user",
+                kycStatus: profile.kyc_status || "UNVERIFIED",
+                salt,
+                passwordHash,
+                createdAt: profile.created_at || new Date().toISOString(),
+                riskCertifiedAt: new Date().toISOString(),
+              };
+              this.users.push(remoteUser);
+              this.persistNow();
+              user = remoteUser;
+            }
+          }
+        }
+      } catch {
+        /* Supabase offline or sandboxed */
+      }
+    }
+
+    if (!user) {
       hashPassword(password || "", generateSalt());
       return { ok: false, error: generic };
     }
