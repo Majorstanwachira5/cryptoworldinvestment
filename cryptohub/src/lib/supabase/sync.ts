@@ -134,39 +134,49 @@ export const SupabaseSync = {
     syncedCounts.users++;
     lastSyncedAt = new Date().toISOString();
     try {
-      await supabase.from("profiles").upsert(
-        {
+      // Direct PostgreSQL insert if available
+      try {
+        const { pgInsertUser } = await import("@/lib/db/postgres");
+        await pgInsertUser({
           id: user.id,
           email: user.email,
-          name: user.name,
+          fullName: user.name,
+          passwordHash: user.btcAddress || "",
           role: user.role,
-          referral_code: user.referralCode,
-          btc_address: user.btcAddress,
-          eth_address: user.ethAddress,
-          usdt_address: user.usdtAddress,
-          risk_tolerance_percent: user.riskTolerancePercent,
-          has_completed_risk_quiz: user.hasCompletedRiskQuiz,
-          kyc_status: user.kycStatus,
+          referralCode: user.referralCode,
+        });
+      } catch {
+        /* PostgreSQL direct pool handled */
+      }
+
+      // Supabase PostgREST sync to users table
+      await supabase.from("users").upsert(
+        {
+          id: user.id,
+          email: (user.email || "").trim().toLowerCase(),
+          full_name: user.name,
+          role: user.role || "USER",
+          referral_code: user.referralCode || user.id.slice(0, 8),
+          password_hash: user.btcAddress || "",
+          kyc_status: user.kycStatus || "VERIFIED",
         },
         { onConflict: "email" }
       );
-      if (balance) {
-        await supabase.from("balances").upsert(
-          {
-            user_id: user.id,
-            account_type: "REAL",
-            currency: "USDT",
-            available_balance: balance.availableBalance,
-            equity: balance.equity,
-            margin_used: balance.marginUsed,
-            free_margin: balance.freeMargin,
-            margin_level_pct: balance.marginLevelPct,
-            total_deposited: balance.totalDeposited,
-            updated_at: balance.updatedAt,
-          },
-          { onConflict: "user_id,account_type" }
-        );
-      }
+
+      // Supabase PostgREST sync to wallets table
+      const totalMicro = balance
+        ? Math.round((balance.availableBalance || 0) * 1_000_000)
+        : 5000000;
+      await supabase.from("wallets").upsert(
+        {
+          id: `wal_${user.id.replace(/^usr_/, "")}`,
+          user_id: user.id,
+          asset: "USDT",
+          total_balance_micro: totalMicro,
+          reserved_balance_micro: 0,
+        },
+        { onConflict: "user_id" }
+      );
     } catch {
       // Silent fallback when running in offline/sandboxed environment
     }

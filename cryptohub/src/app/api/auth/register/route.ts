@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const email = (body.email || "").trim();
+    const email = (body.email || "").trim().toLowerCase();
     const name = (body.name || "").trim();
     const password = body.password || "";
 

@@ -17,16 +17,17 @@ export const dynamic = "force-dynamic";
  */
 async function handleDelete(request: NextRequest) {
   try {
-    const user = await requireIdentity(request);
-    if (!user || !user.id) {
+    const auth = await requireIdentity(request);
+    if (!auth.ok) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized. Valid session required to delete account." },
-        { status: 401 }
+        { success: false, error: auth.error || "Unauthorized. Valid session required." },
+        { status: auth.status }
       );
     }
 
-    const userId = user.id;
-    const userEmail = user.email;
+    const { platformUserId } = await import("@/lib/auth/access");
+    const userId = platformUserId(auth.identity);
+    const userEmail = auth.identity.user?.email || "";
 
     // 1. Purge from local credentials store & WAL
     credentials.deleteUser(userId);
@@ -37,18 +38,23 @@ async function handleDelete(request: NextRequest) {
     // 2. Purge from double-entry database store (balances, trades, ledger, TRC20, withdrawals)
     db.deleteUser(userId);
 
-    // 3. Purge from remote Supabase tables if connected
+    // 3. Purge from direct PostgreSQL and remote Supabase tables
+    try {
+      const { pgDeleteUser } = await import("@/lib/db/postgres");
+      await pgDeleteUser(userId);
+      if (userEmail) {
+        await pgDeleteUser(userEmail);
+      }
+    } catch {
+      /* direct postgres handled */
+    }
+
     try {
       await Promise.allSettled([
-        supabase.from("balances").delete(`user_id=eq.${encodeURIComponent(userId)}`),
-        supabase.from("trades").delete(`user_id=eq.${encodeURIComponent(userId)}`),
+        supabase.from("wallets").delete(`user_id=eq.${encodeURIComponent(userId)}`),
         supabase.from("ledger_entries").delete(`user_id=eq.${encodeURIComponent(userId)}`),
-        supabase.from("trc20_deposits").delete(`user_id=eq.${encodeURIComponent(userId)}`),
-        supabase.from("withdrawals").delete(`user_id=eq.${encodeURIComponent(userId)}`),
-        supabase.from("referrals").delete(`referrer_id=eq.${encodeURIComponent(userId)}`),
-        supabase.from("referrals").delete(`referred_id=eq.${encodeURIComponent(userId)}`),
-        supabase.from("profiles").delete(`id=eq.${encodeURIComponent(userId)}`),
-        userEmail ? supabase.from("profiles").delete(`email=eq.${encodeURIComponent(userEmail)}`) : Promise.resolve(),
+        supabase.from("users").delete(`id=eq.${encodeURIComponent(userId)}`),
+        userEmail ? supabase.from("users").delete(`email=eq.${encodeURIComponent(userEmail)}`) : Promise.resolve(),
       ]);
     } catch {
       /* non-blocking offline/sandboxed fallback */

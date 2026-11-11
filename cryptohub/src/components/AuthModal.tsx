@@ -5,6 +5,7 @@ import { X, Lock, Mail, User, ShieldCheck, AlertTriangle } from "lucide-react";
 import { useToast } from "./Toast";
 import { useSession } from "./SessionProvider";
 import { AccountType } from "@/types";
+import { CwiLogo } from "@/components/CwiLogo";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -60,10 +61,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     setLoading(true);
     try {
+      const cleanEmail = email.trim().toLowerCase();
       const user =
         mode === "REGISTER"
-          ? await register({ name, email, password })
-          : await login({ email, password });
+          ? await register({ name: name.trim(), email: cleanEmail, password })
+          : await login({ email: cleanEmail, password });
 
       showToast(
         "success",
@@ -97,10 +99,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       <div className="bg-[#111726] border border-slate-700/80 rounded-2xl w-full max-w-md overflow-hidden max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 bg-[#0d121e] border-b border-slate-800 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-500 flex items-center justify-center text-white font-bold text-sm">
-              CH
-            </div>
+          <div className="flex items-center gap-3">
+            <CwiLogo size={36} variant="icon" />
             <div>
               <h3 id="auth-modal-title" className="font-extrabold text-base text-white">
                 {isRegister ? "Create Live Account" : "Sign In"}

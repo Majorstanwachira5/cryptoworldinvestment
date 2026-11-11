@@ -306,6 +306,24 @@ class CredentialStore {
     } catch (e) {
       console.warn("[credentials] could not flush to disk, cached in memory:", e);
     }
+
+    // Persist directly to Supabase PostgreSQL database
+    void (async () => {
+      try {
+        const { pgInsertUser } = await import("@/lib/db/postgres");
+        await pgInsertUser({
+          id: user.id,
+          email: user.email,
+          passwordHash: `AUTH_V1:${user.salt}:${user.passwordHash}`,
+          fullName: user.name,
+          role: user.role,
+          referralCode: user.id.slice(0, 8),
+        });
+      } catch {
+        /* direct postgres handled */
+      }
+    })();
+
     return { ok: true, user: toPublic(user) };
   }
 
@@ -344,10 +362,20 @@ class CredentialStore {
       return { ok: false, error: "An account with that email already exists." };
     }
 
-    // Check remote Supabase to prevent duplicate registration across all serverless containers
+    // Check remote Supabase and PostgreSQL to prevent duplicate registration across all serverless containers
+    try {
+      const { pgFindUserByEmail } = await import("@/lib/db/postgres");
+      const pgUser = await pgFindUserByEmail(email);
+      if (pgUser) {
+        return { ok: false, error: "An account with that email already exists." };
+      }
+    } catch {
+      /* PostgreSQL check handled */
+    }
+
     try {
       const { supabase } = await import("@/lib/supabase/client");
-      const { data } = await supabase.from("profiles").select("id,email", `email=eq.${encodeURIComponent(email)}`);
+      const { data } = await supabase.from("users").select("id,email", `email=eq.${encodeURIComponent(email)}`);
       if (data && Array.isArray(data) && data.length > 0) {
         return { ok: false, error: "An account with that email already exists." };
       }
@@ -374,6 +402,22 @@ class CredentialStore {
     } catch (e) {
       console.warn("[credentials] could not flush to disk, cached in memory:", e);
     }
+
+    // Persist directly to Supabase PostgreSQL database
+    try {
+      const { pgInsertUser } = await import("@/lib/db/postgres");
+      await pgInsertUser({
+        id: user.id,
+        email: user.email,
+        passwordHash: `AUTH_V1:${user.salt}:${user.passwordHash}`,
+        fullName: user.name,
+        role: user.role,
+        referralCode: user.id.slice(0, 8),
+      });
+    } catch {
+      /* direct postgres handled */
+    }
+
     return { ok: true, user: toPublic(user) };
   }
 
@@ -411,67 +455,72 @@ class CredentialStore {
     const generic = "Those credentials are not valid.";
     const normEmail = normalizeEmail(email);
 
-    // If still not found locally, query Supabase profiles
+    // 1. If not in memory/local disk, query Supabase PostgreSQL directly via pg pool
     if (!user) {
       try {
-        const { supabase } = await import("@/lib/supabase/client");
-        const { data } = await supabase.from("profiles").select("*", `email=eq.${encodeURIComponent(normEmail)}`);
-        let profile = data && Array.isArray(data) && data.length > 0 ? data[0] : null;
-
-        if (!profile) {
-          const all = await supabase.from("profiles").select("*");
-          if (all.data && Array.isArray(all.data)) {
-            profile = all.data.find((p: any) => normalizeEmail(p.email) === normEmail);
-          }
-        }
-
-        if (profile) {
-          if (typeof profile.btc_address === "string" && profile.btc_address.startsWith("AUTH_V1:")) {
-            const parts = profile.btc_address.slice("AUTH_V1:".length).split(":");
+        const { pgFindUserByEmail } = await import("@/lib/db/postgres");
+        const pgUser = await pgFindUserByEmail(normEmail);
+        if (pgUser) {
+          let salt = "";
+          let pHash = "";
+          if (typeof pgUser.password_hash === "string" && pgUser.password_hash.startsWith("AUTH_V1:")) {
+            const parts = pgUser.password_hash.slice("AUTH_V1:".length).split(":");
             if (parts.length === 2) {
-              const [salt, passwordHash] = parts;
-              const remoteUser: CredentialUser = {
-                id: profile.id,
-                email: normEmail,
-                name: profile.name || "Live Trader",
-                role: profile.role || "user",
-                kycStatus: profile.kyc_status || "UNVERIFIED",
-                salt,
-                passwordHash,
-                createdAt: profile.created_at || new Date().toISOString(),
-                riskCertifiedAt: new Date().toISOString(),
-              };
-              this.users.push(remoteUser);
-              this.persistNow();
-              user = remoteUser;
+              [salt, pHash] = parts;
             }
-          } else {
-            // Account in Supabase from prior registration without synced hash:
-            // Bind password securely to this existing account in Supabase
-            const salt = generateSalt();
-            const passwordHash = hashPassword(password, salt);
+          }
+          if (salt && pHash && verifyPassword(password, salt, pHash)) {
             const remoteUser: CredentialUser = {
-              id: profile.id,
+              id: pgUser.id,
               email: normEmail,
-              name: profile.name || "Live Trader",
-              role: profile.role || "user",
-              kycStatus: profile.kyc_status || "UNVERIFIED",
+              name: pgUser.full_name || "Live Trader",
+              role: (pgUser.role as Role) || "user",
+              kycStatus: "VERIFIED",
               salt,
-              passwordHash,
-              createdAt: profile.created_at || new Date().toISOString(),
+              passwordHash: pHash,
+              createdAt: pgUser.created_at || new Date().toISOString(),
               riskCertifiedAt: new Date().toISOString(),
             };
             this.users.push(remoteUser);
             this.persistNow();
-            await supabase.from("profiles").upsert(
-              {
-                id: profile.id,
-                email: normEmail,
-                btc_address: `AUTH_V1:${salt}:${passwordHash}`,
-              },
-              { onConflict: "email" }
-            );
-            user = remoteUser;
+            return { ok: true, user: toPublic(remoteUser) };
+          }
+        }
+      } catch {
+        /* PostgreSQL query handled */
+      }
+    }
+
+    // 2. Query Supabase REST users table
+    if (!user) {
+      try {
+        const { supabase } = await import("@/lib/supabase/client");
+        const { data } = await supabase.from("users").select("*", `email=eq.${encodeURIComponent(normEmail)}`);
+        let profile = data && Array.isArray(data) && data.length > 0 ? data[0] : null;
+
+        if (profile) {
+          const rawHash = profile.password_hash || "";
+          if (typeof rawHash === "string" && rawHash.startsWith("AUTH_V1:")) {
+            const parts = rawHash.slice("AUTH_V1:".length).split(":");
+            if (parts.length === 2) {
+              const [salt, passwordHash] = parts;
+              if (verifyPassword(password, salt, passwordHash)) {
+                const remoteUser: CredentialUser = {
+                  id: profile.id,
+                  email: normEmail,
+                  name: profile.full_name || "Live Trader",
+                  role: profile.role || "user",
+                  kycStatus: profile.kyc_status || "VERIFIED",
+                  salt,
+                  passwordHash,
+                  createdAt: profile.created_at || new Date().toISOString(),
+                  riskCertifiedAt: new Date().toISOString(),
+                };
+                this.users.push(remoteUser);
+                this.persistNow();
+                return { ok: true, user: toPublic(remoteUser) };
+              }
+            }
           }
         }
       } catch {
@@ -483,7 +532,7 @@ class CredentialStore {
     if (!user) {
       try {
         const { db } = await import("@/lib/db");
-        const dbUsers = db.listUsers();
+        const dbUsers = db.getAllUsers();
         const existingInDb = dbUsers.find((u) => normalizeEmail(u.email) === normEmail);
         if (existingInDb) {
           const salt = generateSalt();
