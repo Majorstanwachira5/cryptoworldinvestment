@@ -130,48 +130,46 @@ export async function checkSupabaseConnection(): Promise<SupabaseHealthStatus> {
  * Never throws or blocks critical financial ledger writes.
  */
 export const SupabaseSync = {
-  syncUser(user: User, balance?: Balance): void {
+  async syncUser(user: User, balance?: Balance): Promise<void> {
     syncedCounts.users++;
     lastSyncedAt = new Date().toISOString();
-    void (async () => {
-      try {
-        await supabase.from("profiles").upsert(
+    try {
+      await supabase.from("profiles").upsert(
+        {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          referral_code: user.referralCode,
+          btc_address: user.btcAddress,
+          eth_address: user.ethAddress,
+          usdt_address: user.usdtAddress,
+          risk_tolerance_percent: user.riskTolerancePercent,
+          has_completed_risk_quiz: user.hasCompletedRiskQuiz,
+          kyc_status: user.kycStatus,
+        },
+        { onConflict: "email" }
+      );
+      if (balance) {
+        await supabase.from("balances").upsert(
           {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            referral_code: user.referralCode,
-            btc_address: user.btcAddress,
-            eth_address: user.ethAddress,
-            usdt_address: user.usdtAddress,
-            risk_tolerance_percent: user.riskTolerancePercent,
-            has_completed_risk_quiz: user.hasCompletedRiskQuiz,
-            kyc_status: user.kycStatus,
+            user_id: user.id,
+            account_type: "REAL",
+            currency: "USDT",
+            available_balance: balance.availableBalance,
+            equity: balance.equity,
+            margin_used: balance.marginUsed,
+            free_margin: balance.freeMargin,
+            margin_level_pct: balance.marginLevelPct,
+            total_deposited: balance.totalDeposited,
+            updated_at: balance.updatedAt,
           },
-          { onConflict: "email" }
+          { onConflict: "user_id,account_type" }
         );
-        if (balance) {
-          await supabase.from("balances").upsert(
-            {
-              user_id: user.id,
-              account_type: "REAL",
-              currency: "USDT",
-              available_balance: balance.availableBalance,
-              equity: balance.equity,
-              margin_used: balance.marginUsed,
-              free_margin: balance.freeMargin,
-              margin_level_pct: balance.marginLevelPct,
-              total_deposited: balance.totalDeposited,
-              updated_at: balance.updatedAt,
-            },
-            { onConflict: "user_id,account_type" }
-          );
-        }
-      } catch {
-        // Silent fallback when running in offline/sandboxed environment
       }
-    })();
+    } catch {
+      // Silent fallback when running in offline/sandboxed environment
+    }
   },
 
   syncLedgerEntry(entry: LedgerEntry): void {

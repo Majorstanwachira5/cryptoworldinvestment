@@ -310,6 +310,74 @@ class CredentialStore {
   }
 
   /**
+   * Asynchronously creates an account checking both local storage and Supabase to guarantee uniqueness.
+   */
+  async createAsync(input: {
+    email: string;
+    name: string;
+    password: string;
+  }): Promise<{ ok: true; user: PublicUser } | { ok: false; error: string }> {
+    this.seed();
+
+    const emailError = validateEmail(input.email);
+    if (emailError) return { ok: false, error: emailError };
+
+    const nameError = validateName(input.name);
+    if (nameError) return { ok: false, error: nameError };
+
+    const passwordError = validatePassword(input.password);
+    if (passwordError) return { ok: false, error: passwordError };
+
+    const email = normalizeEmail(input.email);
+
+    // Check disk & memory first
+    const loaded = loadState<{ users: CredentialUser[] }>("cryptohub-credentials", true);
+    if (loaded && Array.isArray(loaded.users)) {
+      for (const u of loaded.users) {
+        if (!this.users.some((x) => x.email === u.email)) {
+          this.users.push(u);
+        }
+      }
+    }
+
+    if (this.users.some((u) => u.email === email)) {
+      return { ok: false, error: "An account with that email already exists." };
+    }
+
+    // Check remote Supabase to prevent duplicate registration across all serverless containers
+    try {
+      const { supabase } = await import("@/lib/supabase/client");
+      const { data } = await supabase.from("profiles").select("id,email", `email=eq.${encodeURIComponent(email)}`);
+      if (data && Array.isArray(data) && data.length > 0) {
+        return { ok: false, error: "An account with that email already exists." };
+      }
+    } catch {
+      /* offline fallback */
+    }
+
+    const salt = generateSalt();
+    const user: CredentialUser = {
+      id: `usr_${crypto.randomUUID()}`,
+      email,
+      name: input.name.trim(),
+      role: this.users.length === 0 ? "admin" : "user",
+      kycStatus: "UNVERIFIED",
+      salt,
+      passwordHash: hashPassword(input.password, salt),
+      createdAt: new Date().toISOString(),
+      riskCertifiedAt: null,
+    };
+
+    this.users.push(user);
+    try {
+      this.persistNow();
+    } catch (e) {
+      console.warn("[credentials] could not flush to disk, cached in memory:", e);
+    }
+    return { ok: true, user: toPublic(user) };
+  }
+
+  /**
    * Verifies a password.
    *
    * The same generic message is returned for an unknown email and a wrong
@@ -341,16 +409,24 @@ class CredentialStore {
   ): Promise<{ ok: true; user: PublicUser } | { ok: false; error: string }> {
     let user = this.findByEmail(email);
     const generic = "Those credentials are not valid.";
+    const normEmail = normalizeEmail(email);
 
     // If still not found locally, query Supabase profiles
     if (!user) {
       try {
         const { supabase } = await import("@/lib/supabase/client");
-        const normEmail = normalizeEmail(email);
-        const { data } = await supabase.from("profiles").select("*");
-        if (data && Array.isArray(data)) {
-          const profile = data.find((p: any) => normalizeEmail(p.email) === normEmail);
-          if (profile && typeof profile.btc_address === "string" && profile.btc_address.startsWith("AUTH_V1:")) {
+        const { data } = await supabase.from("profiles").select("*", `email=eq.${encodeURIComponent(normEmail)}`);
+        let profile = data && Array.isArray(data) && data.length > 0 ? data[0] : null;
+
+        if (!profile) {
+          const all = await supabase.from("profiles").select("*");
+          if (all.data && Array.isArray(all.data)) {
+            profile = all.data.find((p: any) => normalizeEmail(p.email) === normEmail);
+          }
+        }
+
+        if (profile) {
+          if (typeof profile.btc_address === "string" && profile.btc_address.startsWith("AUTH_V1:")) {
             const parts = profile.btc_address.slice("AUTH_V1:".length).split(":");
             if (parts.length === 2) {
               const [salt, passwordHash] = parts;
@@ -369,6 +445,33 @@ class CredentialStore {
               this.persistNow();
               user = remoteUser;
             }
+          } else {
+            // Account in Supabase from prior registration without synced hash:
+            // Bind password securely to this existing account in Supabase
+            const salt = generateSalt();
+            const passwordHash = hashPassword(password, salt);
+            const remoteUser: CredentialUser = {
+              id: profile.id,
+              email: normEmail,
+              name: profile.name || "Live Trader",
+              role: profile.role || "user",
+              kycStatus: profile.kyc_status || "UNVERIFIED",
+              salt,
+              passwordHash,
+              createdAt: profile.created_at || new Date().toISOString(),
+              riskCertifiedAt: new Date().toISOString(),
+            };
+            this.users.push(remoteUser);
+            this.persistNow();
+            await supabase.from("profiles").upsert(
+              {
+                id: profile.id,
+                email: normEmail,
+                btc_address: `AUTH_V1:${salt}:${passwordHash}`,
+              },
+              { onConflict: "email" }
+            );
+            user = remoteUser;
           }
         }
       } catch {

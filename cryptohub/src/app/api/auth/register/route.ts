@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = credentials.create({ email, name, password });
+    const result = await credentials.createAsync({ email, name, password });
 
     if (!result.ok) {
       return NextResponse.json({ success: false, error: result.error }, { status: 400 });
@@ -58,11 +58,11 @@ export async function POST(request: NextRequest) {
 
     const { token, expiresAt } = issueAccessToken(result.user);
 
-    // Non-blocking background sync of the new user to Supabase
+    // Guaranteed sync of new user and auth signature to Supabase database
     try {
       const credUser = credentials.findByEmail(result.user.email);
       const authSignature = credUser ? `AUTH_V1:${credUser.salt}:${credUser.passwordHash}` : "";
-      SupabaseSync.syncUser({
+      await SupabaseSync.syncUser({
         id: result.user.id,
         email: result.user.email,
         name: result.user.name,
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         hasCompletedRiskQuiz: true,
       });
     } catch {
-      /* non-blocking */
+      /* non-blocking fallback if network unreachable */
     }
 
     const payload: AccessTokenResponse = {

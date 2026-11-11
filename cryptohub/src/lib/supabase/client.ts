@@ -13,8 +13,9 @@ export const supabase = {
       'Content-Type': 'application/json',
     };
     return {
-      async select(columns = '*') {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${encodeURIComponent(columns)}`, {
+      async select(columns = '*', filter?: string) {
+        const query = filter ? (filter.startsWith('&') ? filter : `&${filter}`) : '';
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${encodeURIComponent(columns)}${query}`, {
           headers,
           cache: 'no-store',
         });
