@@ -20,7 +20,16 @@ interface LandingHeroProps {
 export const LandingHero: React.FC<LandingHeroProps> = ({
   assets,
   onOpenTerminal,
+  onOpenAuth,
 }) => {
+  const handleCtaClick = () => {
+    if (onOpenAuth) {
+      onOpenAuth();
+    } else {
+      onOpenTerminal("REAL");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#080c14] text-white flex flex-col selection:bg-cyan-500 selection:text-white">
       {/* 1. Landing Navigation */}
@@ -49,7 +58,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
 
           <div className="flex items-center gap-2.5">
             <button
-              onClick={() => onOpenTerminal("REAL")}
+              onClick={handleCtaClick}
               className="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-extrabold px-4 py-1.5 rounded-lg text-xs transition-all active:scale-95"
             >
               Enter Live Terminal
@@ -114,7 +123,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
         {/* Hero CTAs */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5">
           <button
-            onClick={() => onOpenTerminal("REAL")}
+            onClick={handleCtaClick}
             className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-extrabold px-6 py-3.5 rounded-xl text-sm active:scale-95 transition-all"
           >
             <ShieldCheck className="w-4 h-4" />
@@ -172,7 +181,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               </ul>
 
               <button
-                onClick={() => onOpenTerminal("REAL")}
+                onClick={handleCtaClick}
                 className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-lg shadow-emerald-500/20"
               >
                 Open Live Terminal
@@ -211,7 +220,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               </ul>
 
               <button
-                onClick={() => onOpenTerminal("REAL")}
+                onClick={handleCtaClick}
                 className="w-full py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-bold text-xs transition-all"
               >
                 Access Rewards & Referrals

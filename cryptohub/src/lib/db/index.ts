@@ -871,6 +871,29 @@ class DatabaseStore {
       .map((id) => this.getUser(id))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
+
+  /**
+   * Permanently deletes user profile, accounts, ledger entries, and trades.
+   */
+  deleteUser(userId: string): boolean {
+    let changed = false;
+    if (this.state.users[userId]) {
+      delete this.state.users[userId];
+      changed = true;
+    }
+    if (this.state.accounts[userId]) {
+      delete this.state.accounts[userId];
+      changed = true;
+    }
+    if (this.state.referrals[userId]) {
+      delete this.state.referrals[userId];
+      changed = true;
+    }
+    if (changed) {
+      flushState(STORE_FILE, this.state);
+    }
+    return changed;
+  }
 }
 
 // Global Singleton Store (Shared across all Next.js App Router chunks)

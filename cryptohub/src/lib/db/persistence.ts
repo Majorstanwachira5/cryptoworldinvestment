@@ -85,7 +85,30 @@ export function loadState<T>(name: string, forceReload = false): T | null {
 
   try {
     const file = fileFor(name);
-    if (!fs.existsSync(file)) return memoryCache.has(name) ? (memoryCache.get(name) as T) : null;
+    if (!fs.existsSync(file)) {
+      // Check for committed bundled seed in src/lib/db/seed/${name}.json
+      const bundledCandidates = [
+        path.join(process.cwd(), "cryptohub", "src", "lib", "db", "seed", `${name}.json`),
+        path.join(process.cwd(), "src", "lib", "db", "seed", `${name}.json`),
+        path.join(__dirname, "seed", `${name}.json`),
+      ];
+      for (const bundled of bundledCandidates) {
+        if (fs.existsSync(bundled)) {
+          const rawSeed = fs.readFileSync(bundled, "utf8");
+          if (rawSeed.trim()) {
+            const parsed = JSON.parse(rawSeed) as T;
+            memoryCache.set(name, parsed);
+            try {
+              fs.writeFileSync(file, rawSeed, "utf8");
+            } catch {
+              /* ignore readonly tmp error */
+            }
+            return parsed;
+          }
+        }
+      }
+      return memoryCache.has(name) ? (memoryCache.get(name) as T) : null;
+    }
     const raw = fs.readFileSync(file, "utf8");
     if (!raw.trim()) return memoryCache.has(name) ? (memoryCache.get(name) as T) : null;
     const parsed = JSON.parse(raw) as T;

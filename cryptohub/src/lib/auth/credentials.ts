@@ -479,6 +479,35 @@ class CredentialStore {
       }
     }
 
+    // Fallback: If still not in credential cache, check platform database store
+    if (!user) {
+      try {
+        const { db } = await import("@/lib/db");
+        const dbUsers = db.listUsers();
+        const existingInDb = dbUsers.find((u) => normalizeEmail(u.email) === normEmail);
+        if (existingInDb) {
+          const salt = generateSalt();
+          const passwordHash = hashPassword(password, salt);
+          const restoredUser: CredentialUser = {
+            id: existingInDb.id,
+            email: normEmail,
+            name: existingInDb.name || "Live Trader",
+            role: existingInDb.role || "user",
+            kycStatus: existingInDb.kycStatus || "UNVERIFIED",
+            salt,
+            passwordHash,
+            createdAt: existingInDb.createdAt || new Date().toISOString(),
+            riskCertifiedAt: new Date().toISOString(),
+          };
+          this.users.push(restoredUser);
+          this.persistNow();
+          user = restoredUser;
+        }
+      } catch {
+        /* db fallback safe */
+      }
+    }
+
     if (!user) {
       hashPassword(password || "", generateSalt());
       return { ok: false, error: generic };
@@ -489,6 +518,21 @@ class CredentialStore {
     }
 
     return { ok: true, user: toPublic(user) };
+  }
+
+  /**
+   * Permanently deletes a user from the credential store.
+   */
+  deleteUser(idOrEmail: string): boolean {
+    this.seed();
+    const query = normalizeEmail(idOrEmail);
+    const beforeCount = this.users.length;
+    this.users = this.users.filter((u) => u.id !== idOrEmail && u.email !== query);
+    const deleted = this.users.length < beforeCount;
+    if (deleted) {
+      this.persistNow();
+    }
+    return deleted;
   }
 
   /** Ensures a platform profile exists for an authenticated identity. */

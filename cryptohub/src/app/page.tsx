@@ -545,6 +545,15 @@ function TradingPlatformContent() {
     showToast("info", "Signed Out", "Your access token has been discarded.");
   };
 
+  const handleAccountDeleted = async () => {
+    await handleLogout();
+    showToast(
+      "info",
+      "Account Permanently Deleted",
+      "Your credentials, wallet linkage, and trading records have been completely wiped."
+    );
+  };
+
   // Account Switching Logic
   //
   // Registration or sign-in is required before either book can be opened. The
@@ -793,6 +802,7 @@ function TradingPlatformContent() {
                 onOpenDeposit={(tab) => handleOpenDepositModal(tab || "DEPOSIT")}
                 onCloseTrade={handleCloseTrade}
                 onRefreshBalance={() => fetchBalanceAndUser("REAL")}
+                onOpenAuth={() => setIsAuthOpen(true)}
               />
             </div>
           )}
@@ -966,6 +976,7 @@ asset={selectedAsset}
                   setCurrency((c) => (c === "KES" ? "USD" : "KES"))
                 }
                 onLogout={handleLogout}
+                onAccountDeleted={handleAccountDeleted}
               />
             </div>
           )}
@@ -1015,20 +1026,22 @@ asset={selectedAsset}
             onClose={() => setIsLedgerOpen(false)}
             accountType={accountType}
           />
-
-          <AuthModal
-            isOpen={isAuthOpen}
-            onClose={() => setIsAuthOpen(false)}
-            onLoginSuccess={(chosenType) => {
-              // The session is live now, so opening the requested book is allowed.
-              setAccountType(chosenType);
-              accountTypeRef.current = chosenType;
-              setSection("HOME");
-              setView("TERMINAL");
-            }}
-          />
         </main>
       )}
+
+      {/* Global AuthModal rendered at root level: accessible from LandingHero, HomeDashboard, and any CTA click */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onLoginSuccess={(chosenType) => {
+          setAccountType(chosenType);
+          accountTypeRef.current = chosenType;
+          setSection("HOME");
+          setView("TERMINAL");
+          fetchBalanceAndUser(chosenType);
+          fetchProfile();
+        }}
+      />
     </>
   );
 }

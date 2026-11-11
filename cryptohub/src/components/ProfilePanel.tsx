@@ -28,6 +28,7 @@ import {
   ExternalLink,
   Layers,
   Gift,
+  Trash2,
 } from "lucide-react";
 
 interface ProfilePanelProps {
@@ -43,6 +44,7 @@ interface ProfilePanelProps {
   onToggleCurrency?: () => void;
   onSelectCurrency?: (currency: DisplayCurrency) => void;
   onLogout?: () => void;
+  onAccountDeleted?: () => void;
 }
 
 export const ProfilePanel: React.FC<ProfilePanelProps> = ({
@@ -57,15 +59,45 @@ export const ProfilePanel: React.FC<ProfilePanelProps> = ({
   onToggleCurrency,
   onSelectCurrency,
   onLogout,
+  onAccountDeleted,
 }) => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>("dark");
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
   const currencyDropdownRef = useRef<HTMLDivElement>(null);
+
+  const handlePermanentAccountDelete = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const { authFetch } = await import("@/lib/auth/session");
+      const res = await authFetch("/api/auth/delete-account", {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        setShowDeleteModal(false);
+        if (onAccountDeleted) {
+          onAccountDeleted();
+        } else if (onLogout) {
+          onLogout();
+        }
+      } else {
+        setDeleteError(data.error || "Failed to permanently delete account.");
+      }
+    } catch (err: any) {
+      setDeleteError(err.message || "Network error deleting account.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     setTheme(getInitialTheme());
@@ -700,6 +732,33 @@ export const ProfilePanel: React.FC<ProfilePanelProps> = ({
             </p>
           </div>
         </div>
+
+        {/* Card C: Danger Zone — Permanent Account Deletion */}
+        <div className="bg-[#180a0e] border border-rose-900/60 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-rose-900/40">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-rose-400" />
+              <h3 className="font-extrabold text-sm text-rose-300">Danger Zone · Account Deletion</h3>
+            </div>
+            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-rose-950/80 border border-rose-800 text-rose-400 font-bold">
+              Irreversible
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-xs text-rose-200/80 leading-relaxed">
+              Permanently delete your account credentials, wallet bindings, double-entry financial ledger records, and trading history. All server records and logs are wiped immediately.
+            </p>
+
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="w-full sm:w-auto bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-900/30 active:scale-95 transition-all"
+            >
+              <Trash2 className="w-4 h-4" />
+              Permanently Delete Account
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ================= Password Management Modal ================= */}
@@ -774,6 +833,63 @@ export const ProfilePanel: React.FC<ProfilePanelProps> = ({
                 Save New Password
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= Permanent Account Deletion Confirmation Modal ================= */}
+      {showDeleteModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
+        >
+          <div className="bg-[#111624] border border-rose-600/70 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
+              <div className="w-10 h-10 rounded-full bg-rose-950 border border-rose-600/60 flex items-center justify-center text-rose-400 shrink-0">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 id="delete-account-title" className="font-black text-base text-white">Permanently Delete Account?</h4>
+                <p className="text-[11px] text-rose-400 font-medium">All credentials &amp; logs wiped immediately.</p>
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-300 space-y-2 leading-relaxed bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+              <p>Are you sure you want to permanently delete your account?</p>
+              <ul className="list-disc list-inside space-y-1 text-slate-400 text-[11px]">
+                <li>All login credentials and password hashes will be wiped.</li>
+                <li>Your TRC20 wallet linkages will be permanently severed.</li>
+                <li>All trading history, open positions, and balances will be destroyed.</li>
+                <li>All double-entry ledger audit records will be cleared.</li>
+              </ul>
+            </div>
+
+            {deleteError && (
+              <div className="text-xs p-3 rounded-xl bg-rose-950/70 border border-rose-700 text-rose-300">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handlePermanentAccountDelete}
+                disabled={isDeleting}
+                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-black py-2.5 rounded-xl text-xs transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30"
+              >
+                {isDeleting ? "Deleting..." : "Yes, Delete Everything"}
+              </button>
+            </div>
           </div>
         </div>
       )}

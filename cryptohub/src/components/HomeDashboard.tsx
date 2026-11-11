@@ -44,6 +44,7 @@ interface HomeDashboardProps {
   onOpenDeposit: (tab?: "DEPOSIT" | "WITHDRAW") => void;
   onCloseTrade: (tradeId: string, exitPrice: number) => void;
   onRefreshBalance?: () => void;
+  onOpenAuth?: () => void;
 }
 
 export const HomeDashboard: React.FC<HomeDashboardProps> = ({
@@ -61,6 +62,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onOpenDeposit,
   onCloseTrade,
   onRefreshBalance,
+  onOpenAuth,
 }) => {
   const [showBalance, setShowBalance] = useState(true);
   const [dismissBanner, setDismissBanner] = useState(false);
@@ -70,6 +72,19 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const [favorites] = useState<string[]>(["BTC/USDT", "ETH/USDT", "SOL/USDT"]);
   const [copiedCode, setCopiedCode] = useState(false);
   const [isAutoTrading, setIsAutoTrading] = useState(false);
+
+  // Unauthenticated click interceptor: forces AuthModal on any user action when not signed in
+  const requireAuth = (callback: () => void) => {
+    if (!user?.id) {
+      if (onOpenAuth) {
+        onOpenAuth();
+      } else {
+        onOpenDeposit("DEPOSIT");
+      }
+      return;
+    }
+    callback();
+  };
 
   const [levelInfo, setLevelInfo] = useState<{
     effectiveLevel: number;
@@ -168,6 +183,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   }, [fetchMicroStatus, balance?.availableBalance]);
 
   const handleExecuteMicroTrade = async () => {
+    if (!user?.id) {
+      onOpenAuth?.();
+      return;
+    }
     if (isExecutingMicro) return;
     setIsExecutingMicro(true);
     try {
@@ -384,7 +403,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
           {/* Hero Acid Yellow Pill Deposit Button */}
           <button
-            onClick={() => onOpenDeposit("DEPOSIT")}
+            onClick={() => requireAuth(() => onOpenDeposit("DEPOSIT"))}
             className="bg-[#e2ff3b] hover:bg-[#d5f32a] text-[#050b14] font-black px-6 py-2.5 rounded-full text-xs sm:text-sm shadow-lg shadow-[#e2ff3b]/25 transition-all active:scale-95 hover:brightness-105 shrink-0"
           >
             Deposit
@@ -429,7 +448,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       <div className="grid grid-cols-4 gap-2 sm:gap-4 py-2">
         {/* Deposit */}
         <button
-          onClick={() => onOpenDeposit("DEPOSIT")}
+          onClick={() => requireAuth(() => onOpenDeposit("DEPOSIT"))}
           className="flex flex-col items-center justify-center gap-1.5 group active:scale-95 transition-transform"
         >
           <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#0a182e] group-hover:bg-[#0f2444] border border-[#163660] group-hover:border-[#e2ff3b]/50 flex items-center justify-center shadow-xl transition-all">
@@ -442,7 +461,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
         {/* Withdrawal */}
         <button
-          onClick={() => onOpenDeposit("WITHDRAW")}
+          onClick={() => requireAuth(() => onOpenDeposit("WITHDRAW"))}
           className="flex flex-col items-center justify-center gap-1.5 group active:scale-95 transition-transform"
         >
           <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#0a182e] group-hover:bg-[#0f2444] border border-[#163660] group-hover:border-[#e2ff3b]/50 flex items-center justify-center shadow-xl transition-all">
@@ -455,7 +474,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
         {/* Invite */}
         <button
-          onClick={onNavigateToReferrals}
+          onClick={() => requireAuth(onNavigateToReferrals)}
           className="flex flex-col items-center justify-center gap-1.5 group active:scale-95 transition-transform"
         >
           <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#0a182e] group-hover:bg-[#0f2444] border border-[#163660] group-hover:border-[#e2ff3b]/50 flex items-center justify-center shadow-xl transition-all">
@@ -468,7 +487,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
         {/* More */}
         <button
-          onClick={() => setIsMoreOpen((v) => !v)}
+          onClick={() => requireAuth(() => setIsMoreOpen((v) => !v))}
           className="flex flex-col items-center justify-center gap-1.5 group active:scale-95 transition-transform"
         >
           <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#0a182e] group-hover:bg-[#0f2444] border border-[#163660] group-hover:border-[#e2ff3b]/50 flex items-center justify-center shadow-xl transition-all">
@@ -482,7 +501,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
       {/* 5. One-Click Copy Trading Promotional Banner (Futuristic Ocean Hologram + Acid Accents) */}
       <div
-        onClick={handleRunAutoTrade}
+        onClick={() => requireAuth(handleRunAutoTrade)}
         role="button"
         tabIndex={0}
         className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#030c1c] via-[#081a38] to-[#040e24] border border-[#143564] hover:border-[#0ea5e9]/60 p-4 sm:p-5 cursor-pointer shadow-2xl transition-all group"
@@ -874,7 +893,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 return (
                   <div
                     key={asset.symbol}
-                    onClick={() => onNavigateToTrade("REAL", asset)}
+                    onClick={() => requireAuth(() => onNavigateToTrade("REAL", asset))}
                     role="button"
                     tabIndex={0}
                     className="grid grid-cols-12 items-center bg-[#071324]/85 hover:bg-[#0c1c34] border border-[#122544] hover:border-[#1d4274] rounded-xl px-2.5 py-3 transition-all active:scale-[0.99] cursor-pointer group shadow-sm"
@@ -943,7 +962,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               </h3>
             </div>
             <button
-              onClick={() => onNavigateToTrade("REAL")}
+              onClick={() => requireAuth(() => onNavigateToTrade("REAL"))}
               className="text-xs text-[#38bdf8] hover:text-[#e2ff3b] hover:underline font-bold"
             >
               Open Terminal

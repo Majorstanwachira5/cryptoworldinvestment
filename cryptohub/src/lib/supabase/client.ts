@@ -49,6 +49,17 @@ export const supabase = {
         });
         return { error: res.ok ? null : { status: res.status, message: res.statusText } };
       },
+      async delete(filter: string) {
+        const query = filter.startsWith('?') ? filter : `?${filter}`;
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
+          method: 'DELETE',
+          headers: {
+            ...headers,
+            Prefer: 'return=minimal',
+          },
+        });
+        return { error: res.ok ? null : { status: res.status, message: res.statusText } };
+      },
     };
   },
 };
