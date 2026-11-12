@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import localFont from "next/font/local";
+import { ScreenProtectionGuard } from "@/components/ScreenProtectionGuard";
 
 const inter = localFont({
   src: [
@@ -24,6 +25,7 @@ const jetbrainsMono = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.cryptoworldinvest.world"),
   title: "CryptoWorldInvestment (CWI) | Institutional Quantitative Trading Platform",
   description:
     "Financial Freedom Built on Trade and Winning. High-frequency institutional trading platform for Crypto and Forex markets with algorithmic risk management, real-time TradingView charts, and automated quantitative prediction signals.",
@@ -74,7 +76,7 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-background text-foreground min-h-screen selection:bg-cyan-500 selection:text-white transition-colors duration-200 font-sans">
-        {children}
+        <ScreenProtectionGuard>{children}</ScreenProtectionGuard>
       </body>
     </html>
   );

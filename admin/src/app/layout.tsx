@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ScreenProtectionGuard } from "../components/ScreenProtectionGuard";
 
 export const metadata: Metadata = {
   title: "CryptoWorldInvestment (CWI) Administrator Command Authority",
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="bg-[#090D16] text-[#F8FAFC] min-h-screen antialiased">
-        {children}
+        <ScreenProtectionGuard>{children}</ScreenProtectionGuard>
       </body>
     </html>
   );

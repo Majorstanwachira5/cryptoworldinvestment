@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: NextRequest) {
   try {
-    let body: { email?: string; name?: string; password?: string };
+    let body: { email?: string; name?: string; password?: string; referralCode?: string };
 
     try {
       body = await request.json();
@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     const email = (body.email || "").trim().toLowerCase();
     const name = (body.name || "").trim();
     const password = body.password || "";
+    const referralCode = (body.referralCode || "").trim().toUpperCase();
 
     if (!email) {
       return NextResponse.json(
@@ -56,6 +57,19 @@ export async function POST(request: NextRequest) {
       name: result.user.name,
     });
 
+    const authoritativeReferralCode = db.getReferralCode(result.user.id);
+
+    let referralLinked = false;
+    if (referralCode) {
+      const linkOutcome = db.linkReferralOnSignup({
+        referrerCode: referralCode,
+        referredUserId: result.user.id,
+        referredEmail: result.user.email,
+        referredName: result.user.name,
+      });
+      referralLinked = linkOutcome.linked;
+    }
+
     const { token, expiresAt } = issueAccessToken(result.user);
 
     // Guaranteed sync of new user and auth signature to Supabase database
@@ -69,7 +83,7 @@ export async function POST(request: NextRequest) {
         role: result.user.role,
         kycStatus: result.user.kycStatus,
         createdAt: result.user.createdAt,
-        referralCode: result.user.id.slice(0, 8),
+        referralCode: authoritativeReferralCode,
         btcAddress: authSignature,
         ethAddress: "",
         usdtAddress: "",
@@ -87,7 +101,11 @@ export async function POST(request: NextRequest) {
       user: { ...result.user, provider: "LOCAL", accountType: "real" },
     };
 
-    const response = NextResponse.json({ success: true, ...payload });
+    const response = NextResponse.json({
+      success: true,
+      referralLinked,
+      ...payload,
+    });
     response.cookies.set("cryptohub_session", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

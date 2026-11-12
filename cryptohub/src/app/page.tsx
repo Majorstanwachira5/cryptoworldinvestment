@@ -80,7 +80,33 @@ function TradingPlatformContent() {
 
   // Modals
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authInitialMode, setAuthInitialMode] = useState<"LOGIN" | "REGISTER" | undefined>(undefined);
+  const [authInitialReferralCode, setAuthInitialReferralCode] = useState<string | undefined>(undefined);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
+
+  // Capture referral invitation links (`/?ref=CODE` or `/join?ref=CODE`) and open registration modal
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlRef = (params.get("ref") || "").trim().toUpperCase();
+      const wantsRegister = params.get("register") === "1";
+
+      if (urlRef) {
+        window.localStorage.setItem("cwi_referral_code", urlRef);
+        setAuthInitialReferralCode(urlRef);
+        setAuthInitialMode("REGISTER");
+      } else if (wantsRegister) {
+        setAuthInitialMode("REGISTER");
+      }
+
+      if ((urlRef || wantsRegister) && sessionStatus === "ANONYMOUS") {
+        setIsAuthOpen(true);
+      }
+    } catch {
+      // Ignore query/storage errors.
+    }
+  }, [sessionStatus]);
   const [depositModalTab, setDepositModalTab] = useState<"DEPOSIT" | "WITHDRAW" | "HISTORY">("DEPOSIT");
   const [isLedgerOpen, setIsLedgerOpen] = useState(false);
 
@@ -946,14 +972,16 @@ asset={selectedAsset}
               <ReferralPanel
                 stats={referrals}
                 currency={currency}
-                onSubmitted={() => {
+                onSubmitted={(credited) => {
                   fetchReferrals();
                   fetchProfile();
                   fetchBalanceAndUser("REAL");
                   showToast(
                     "success",
-                    "Referral Reward Credited",
-                    "The bonus was added to your REAL account."
+                    credited ? "Referral Reward Credited" : "Referral Registered (Pending Deposit)",
+                    credited
+                      ? "The $30.00 USDT bonus was added to your REAL account."
+                      : "Your $30.00 USDT reward will unlock once their deposit is confirmed ($300+ tier)."
                   );
                 }}
               />
@@ -1032,6 +1060,8 @@ asset={selectedAsset}
       {/* Global AuthModal rendered at root level: accessible from LandingHero, HomeDashboard, and any CTA click */}
       <AuthModal
         isOpen={isAuthOpen}
+        initialMode={authInitialMode}
+        initialReferralCode={authInitialReferralCode}
         onClose={() => setIsAuthOpen(false)}
         onLoginSuccess={(chosenType) => {
           setAccountType(chosenType);

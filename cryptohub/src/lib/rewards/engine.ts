@@ -692,25 +692,23 @@ export class RewardEngine {
       return { success: false, error: "Self-referral is strictly prohibited." };
     }
 
-    // Check unique constraint: Referred email has already rewarded this referrer
+    // Check unique constraint: only reject if ALREADY qualified/credited
     const existingReferrals = db.getReferrals(input.referrerId) || [];
-    const alreadyRewarded = existingReferrals.find(
+    const existingRecord = existingReferrals.find(
       (r) => r.referredEmail.toLowerCase() === cleanEmail
     );
 
-    if (alreadyRewarded) {
+    if (existingRecord && existingRecord.status === "QUALIFIED") {
       return {
         success: false,
         error: `Referral reward for ${cleanEmail} has already been credited once.`,
       };
     }
 
-    // Record referral and credit $30.00
     const rewardUsd = this.REFERRAL_REWARD_USD;
-    const referralId = `ref_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    const txHash = `ref_reward_${referralId}`;
+    const txHash = `ref_reward_${input.referrerId}_${cleanEmail}`;
 
-    // Verify that the referee has deposited according to platform level tiers (minimum Level 3 = $300.00)
+    // Verify that the referee has confirmed deposits reaching platform level tiers (minimum Level 3 = $300.00)
     const referredUser = db.getAllUsers().find(
       (u) => u.email.toLowerCase() === cleanEmail
     );
@@ -724,22 +722,54 @@ export class RewardEngine {
 
     const hasReachedDepositTier = refereeCumulativeDeposits >= 300;
 
-    db.recordReferral(
-      input.referrerId,
-      referrer.email,
-      referrer.referralCode,
-      cleanEmail,
-      input.referredName || cleanEmail.split("@")[0],
-      rewardUsd,
-      hasReachedDepositTier ? "QUALIFIED" : "PENDING"
-    );
-
     if (!hasReachedDepositTier) {
+      if (!existingRecord) {
+        db.recordReferral(
+          input.referrerId,
+          referrer.email,
+          referrer.referralCode,
+          cleanEmail,
+          input.referredName || cleanEmail.split("@")[0],
+          rewardUsd,
+          "PENDING"
+        );
+      }
       return {
         success: true,
         rewardAmount: 0,
-        error: "Referral recorded as PENDING. Reward ($30.00 USDT) unlocks once referee deposits according to platform levels (min $300.00).",
+        error: "Referral recorded as PENDING. Reward ($30.00 USDT) unlocks once referee deposits are confirmed ($300.00+).",
       };
+    }
+
+    // Strict ledger-level idempotency check
+    const referrerLedger = db.getLedger(input.referrerId, "REAL");
+    const alreadyCreditedInLedger = referrerLedger.some(
+      (e) =>
+        e.type === "REFERRAL_BONUS" &&
+        (e.txHash === txHash || e.description?.toLowerCase().includes(`for ${cleanEmail}`))
+    );
+    if (alreadyCreditedInLedger) {
+      if (existingRecord && existingRecord.status === "PENDING") {
+        existingRecord.status = "QUALIFIED";
+      }
+      return {
+        success: false,
+        error: `Referral reward for ${cleanEmail} has already been credited once.`,
+      };
+    }
+
+    if (existingRecord) {
+      existingRecord.status = "QUALIFIED";
+    } else {
+      db.recordReferral(
+        input.referrerId,
+        referrer.email,
+        referrer.referralCode,
+        cleanEmail,
+        input.referredName || cleanEmail.split("@")[0],
+        rewardUsd,
+        "QUALIFIED"
+      );
     }
 
     const entry = db.addLedgerEntry(

@@ -21,6 +21,8 @@ initDatabase().catch(err => {
 const app = express();
 
 const allowedOrigins = [
+  'https://www.cryptoworldinvest.world',
+  'https://cryptoworldinvest.world',
   'https://cryptoworldinvestment.majorstan20.workers.dev',
   'https://cryptoworldinvestment.vercel.app',
   'http://localhost:3600',

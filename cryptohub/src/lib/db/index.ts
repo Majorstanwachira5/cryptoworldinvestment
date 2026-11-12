@@ -552,7 +552,8 @@ class DatabaseStore {
       "REAL"
     );
 
-    // Unlock pending referral rewards for the referrer if this user's cumulative deposits reach Level 3 threshold ($300.00)
+    // Unlock pending referral rewards for the referrer only once this user's
+    // confirmed cumulative REAL deposits reach Level 3 threshold ($300.00).
     const depositor = this.state.users[userId];
     if (depositor && depositor.email) {
       const depEmail = depositor.email.toLowerCase();
@@ -562,23 +563,41 @@ class DatabaseStore {
         .reduce((sum, e) => sum + e.amount, 0);
 
       if (cumulativeDeposits >= 300) {
+        let changed = false;
         for (const [refId, records] of Object.entries(this.state.referrals)) {
           for (const r of records) {
             if (r.referredEmail.toLowerCase() === depEmail && r.status === "PENDING") {
-              r.status = "QUALIFIED";
-              this.addLedgerEntry(
-                refId,
-                {
-                  type: "REFERRAL_BONUS",
-                  amount: r.rewardUsd,
-                  currency: "USDT",
-                  description: `Qualified referral reward for ${depEmail} ($${r.rewardUsd.toFixed(2)} USDT)`,
-                },
-                "REAL"
+              const rewardTxHash = `ref_reward_${refId}_${depEmail}`;
+              const referrerAccount = this.account(refId, "REAL");
+              const alreadyCredited = referrerAccount.ledger.some(
+                (entry) =>
+                  entry.type === "REFERRAL_BONUS" &&
+                  (entry.txHash === rewardTxHash ||
+                    entry.description?.toLowerCase().includes(`for ${depEmail}`))
               );
+
+              r.status = "QUALIFIED";
+              changed = true;
+
+              if (!alreadyCredited) {
+                this.addLedgerEntry(
+                  refId,
+                  {
+                    type: "REFERRAL_BONUS",
+                    amount: r.rewardUsd,
+                    currency: "USDT",
+                    txHash: rewardTxHash,
+                    description: `Qualified referral reward for ${depEmail} ($${r.rewardUsd.toFixed(2)} USDT)`,
+                  },
+                  "REAL"
+                );
+              }
               SupabaseSync.syncReferral(r);
             }
           }
+        }
+        if (changed) {
+          this.persistNow();
         }
       }
     }
@@ -672,7 +691,10 @@ class DatabaseStore {
     }
 
     const mine = this.state.referrals[userId] ?? [];
-    if (mine.some((r) => r.referredEmail === email)) {
+    const alreadyAttributed = Object.values(this.state.referrals)
+      .flat()
+      .some((r) => r.referredEmail.toLowerCase() === email);
+    if (mine.some((r) => r.referredEmail === email) || alreadyAttributed) {
       return {
         ok: false,
         error: `${email} has already been referred. Each referral is paid once.`,
@@ -708,18 +730,29 @@ class DatabaseStore {
 
     this.state.referrals[userId] = [record, ...mine];
 
-    // Authoritative rule: reward is credited to REAL ledger only once the referee deposits according to levels ($300 min)
+    // Authoritative rule: reward is credited to REAL ledger only once the referee's confirmed deposits reach $300.00
     if (hasReachedDepositTier) {
-      this.addLedgerEntry(
-        userId,
-        {
-          type: "REFERRAL_BONUS",
-          amount: record.rewardUsd,
-          currency: "USDT",
-          description: `Direct referral reward for ${record.referredEmail} ($${record.rewardUsd.toFixed(2)} USDT)`,
-        },
-        "REAL"
+      const rewardTxHash = `ref_reward_${userId}_${email}`;
+      const referrerAccount = this.account(userId, "REAL");
+      const alreadyCredited = referrerAccount.ledger.some(
+        (entry) =>
+          entry.type === "REFERRAL_BONUS" &&
+          (entry.txHash === rewardTxHash ||
+            entry.description?.toLowerCase().includes(`for ${email}`))
       );
+      if (!alreadyCredited) {
+        this.addLedgerEntry(
+          userId,
+          {
+            type: "REFERRAL_BONUS",
+            amount: record.rewardUsd,
+            currency: "USDT",
+            txHash: rewardTxHash,
+            description: `Direct referral reward for ${record.referredEmail} ($${record.rewardUsd.toFixed(2)} USDT)`,
+          },
+          "REAL"
+        );
+      }
     }
 
     const account = this.account(userId, "REAL");
@@ -728,6 +761,76 @@ class DatabaseStore {
     SupabaseSync.syncReferral(record);
 
     return { record, balance: { ...account.balance }, ok: true };
+  }
+
+  /**
+   * Finds the owning user record for a given referral code (case-insensitive).
+   */
+  findUserByReferralCode(code: string) {
+    const clean = (code || "").trim().toUpperCase();
+    if (!clean) return null;
+    return (
+      Object.values(this.state.users).find(
+        (u) => (u.referralCode || "").trim().toUpperCase() === clean
+      ) || null
+    );
+  }
+
+  /**
+   * Attaches a newly registered trader to their referrer in PENDING state.
+   * No reward is credited until the referred trader's deposit is confirmed ($300+ tier).
+   */
+  linkReferralOnSignup(input: {
+    referrerCode: string;
+    referredUserId: string;
+    referredEmail: string;
+    referredName?: string;
+  }): { linked: boolean; record?: ReferralRecord; reason?: string } {
+    const cleanCode = (input.referrerCode || "").trim().toUpperCase();
+    const cleanEmail = (input.referredEmail || "").trim().toLowerCase();
+
+    if (!cleanCode || !cleanEmail || !cleanEmail.includes("@")) {
+      return { linked: false, reason: "Invalid referral code or email." };
+    }
+
+    const referrer = this.findUserByReferralCode(cleanCode);
+    if (!referrer) {
+      return { linked: false, reason: "Referral code not recognised." };
+    }
+
+    if (
+      referrer.id === input.referredUserId ||
+      referrer.email.toLowerCase() === cleanEmail
+    ) {
+      return { linked: false, reason: "Self-referral is prohibited." };
+    }
+
+    const alreadyAttributed = Object.values(this.state.referrals)
+      .flat()
+      .some((r) => r.referredEmail.toLowerCase() === cleanEmail);
+    if (alreadyAttributed) {
+      return { linked: false, reason: "Trader already linked to a referrer." };
+    }
+
+    const mine = this.state.referrals[referrer.id] ?? [];
+    const record: ReferralRecord = {
+      id: `ref_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      referrerId: referrer.id,
+      referrerEmail: referrer.email,
+      code: cleanCode,
+      referredEmail: cleanEmail,
+      referredName: (input.referredName || "").trim() || cleanEmail.split("@")[0],
+      status: "PENDING",
+      rewardUsd: DIRECT_REFERRAL_REWARD_USD,
+      tier: 1,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.state.referrals[referrer.id] = [record, ...mine];
+    this.persistNow();
+    SupabaseSync.syncReferral(record);
+
+    return { linked: true, record };
   }
 
   recordReferral(

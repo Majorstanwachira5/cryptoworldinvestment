@@ -37,6 +37,7 @@ interface SessionContextValue {
     name: string;
     email: string;
     password: string;
+    referralCode?: string;
   }) => Promise<AuthenticatedUser>;
   logout: () => Promise<void>;
 }
@@ -101,7 +102,12 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const register = useCallback(
-    async (input: { name: string; email: string; password: string }) => {
+    async (input: {
+      name: string;
+      email: string;
+      password: string;
+      referralCode?: string;
+    }) => {
       const result = await registerAccount(input);
       setUser(result.user);
       setStatus("AUTHENTICATED");

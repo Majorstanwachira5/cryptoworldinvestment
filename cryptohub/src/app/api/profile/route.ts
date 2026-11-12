@@ -13,8 +13,9 @@ export const dynamic = "force-dynamic";
 function referralStats(userId: string, req?: NextRequest): ReferralStats {
   const rewardUsd = db.getReferralRewardUsd();
   const records = db.getReferrals(userId);
+  const qualifiedRecords = records.filter((r) => r.status === "QUALIFIED");
   const totalEarnedUsd =
-    Math.round(records.reduce((a, r) => a + r.rewardUsd, 0) * 100) / 100;
+    Math.round(qualifiedRecords.reduce((a, r) => a + r.rewardUsd, 0) * 100) / 100;
   const code = db.getReferralCode(userId);
 
   return {

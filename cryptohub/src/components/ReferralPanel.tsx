@@ -20,7 +20,7 @@ import {
 interface ReferralPanelProps {
   stats: ReferralStats | null;
   currency: "USD" | "KES";
-  onSubmitted: () => void;
+  onSubmitted: (credited?: boolean) => void;
 }
 
 export const ReferralPanel: React.FC<ReferralPanelProps> = ({
@@ -38,13 +38,13 @@ export const ReferralPanel: React.FC<ReferralPanelProps> = ({
 
   const effectiveShareUrl = React.useMemo(() => {
     if (!stats) return "";
-    let url = stats.shareUrl || `https://cryptoworldinvestment.vercel.app/join?ref=${stats.code}`;
-    if (url.includes("localhost")) {
-      if (typeof window !== "undefined" && window.location.host && !window.location.host.includes("localhost")) {
-        url = `${window.location.origin}/join?ref=${stats.code}`;
-      } else {
-        url = `https://cryptoworldinvestment.vercel.app/join?ref=${stats.code}`;
-      }
+    let url = stats.shareUrl || `https://www.cryptoworldinvest.world/join?ref=${stats.code}`;
+    if (
+      url.includes("localhost") ||
+      url.includes("cryptohub.trade") ||
+      url.includes("cryptoworldinvestment.vercel.app")
+    ) {
+      url = `https://www.cryptoworldinvest.world/join?ref=${stats.code}`;
     }
     return url.replace(/\/\?ref=/g, "/join?ref=");
   }, [stats]);
@@ -111,13 +111,16 @@ export const ReferralPanel: React.FC<ReferralPanelProps> = ({
       const data = await res.json();
 
       if (data.success) {
+        const isQualified = data.record?.status === "QUALIFIED" || data.credited === true;
         setMessage({
           kind: "ok",
-          text: `Reward credited: ${formatMoney(data.reward.amountUsd, currency)} ($30.00 USDT) directly to your REAL account ledger.`,
+          text: isQualified
+            ? `Reward credited: ${formatMoney(data.reward?.amountUsd ?? 30, currency)} ($30.00 USDT) directly to your REAL account ledger.`
+            : `Referral registered as PENDING for ${email}. Your $30.00 USDT reward will unlock into your REAL account automatically once their deposit is confirmed ($300.00+ tier).`,
         });
         setEmail("");
         setName("");
-        onSubmitted();
+        onSubmitted(isQualified);
       } else {
         setMessage({ kind: "err", text: data.error || "Could not register that referral." });
       }
@@ -244,7 +247,9 @@ export const ReferralPanel: React.FC<ReferralPanelProps> = ({
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Qualified
               </div>
               <div className="text-xl font-black text-emerald-400 mt-1.5">{stats.qualified}</div>
-              <div className="text-[10px] text-slate-500 mt-0.5">Eligible for rewards</div>
+              <div className="text-[10px] text-slate-500 mt-0.5">
+                {stats.pending > 0 ? `${stats.pending} pending deposit` : "Confirmed deposits ($300+)"}
+              </div>
             </div>
 
             <div className="bg-slate-950/70 border border-slate-800/80 rounded-lg p-3 flex flex-col justify-between">
@@ -338,7 +343,7 @@ export const ReferralPanel: React.FC<ReferralPanelProps> = ({
               className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 py-2.5 rounded-lg text-xs tracking-wide transition-all active:scale-[0.99] disabled:opacity-60 flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              <span>{submitting ? "Crediting..." : "Register Referral ($30.00 USDT Direct Bonus)"}</span>
+              <span>{submitting ? "Registering..." : "Register Referral ($30.00 Bonus on Deposit)"}</span>
             </button>
 
             {message && (
@@ -356,7 +361,7 @@ export const ReferralPanel: React.FC<ReferralPanelProps> = ({
             <p className="text-[10px] text-slate-500 leading-relaxed flex items-start gap-1.5 border-t border-slate-800/80 pt-2.5">
               <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-cyan-400 mt-0.5" />
               <span>
-                Referral rewards settle into your REAL account ledger. Each referred email is paid once; self-referral is cryptographically prohibited.
+                Your $30.00 USDT referral reward settles automatically into your REAL account ledger only after the referred trader completes a confirmed deposit ($300.00+ tier). Each referred email is paid once; self-referral is cryptographically prohibited.
               </span>
             </p>
           </div>
@@ -380,30 +385,44 @@ export const ReferralPanel: React.FC<ReferralPanelProps> = ({
               </div>
             ) : (
               <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                {stats.records.map((r) => (
-                  <div
-                    key={r.id}
-                    className="flex items-center justify-between gap-3 bg-slate-950/70 border border-slate-800/80 rounded-lg px-3 py-2"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-slate-200 font-medium truncate">{r.referredEmail}</span>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            Direct ($30 USDT)
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">
-                          {new Date(r.createdAt).toLocaleString("en-KE")} · {r.status}
+                {stats.records.map((r) => {
+                  const isQualified = r.status === "QUALIFIED";
+                  return (
+                    <div
+                      key={r.id}
+                      className="flex items-center justify-between gap-3 bg-slate-950/70 border border-slate-800/80 rounded-lg px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-200 font-medium truncate">{r.referredEmail}</span>
+                            <span
+                              className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider border ${
+                                isQualified
+                                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                                  : "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                              }`}
+                            >
+                              {isQualified ? "Confirmed ($30 USDT)" : "Pending Deposit"}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {new Date(r.createdAt).toLocaleString("en-KE")} ·{" "}
+                            {isQualified ? "QUALIFIED" : "Awaiting confirmed deposit ($300+)"}
+                          </div>
                         </div>
                       </div>
+                      <span
+                        className={`text-xs font-black shrink-0 ${
+                          isQualified ? "text-emerald-400" : "text-amber-300"
+                        }`}
+                      >
+                        {isQualified ? `+$${r.rewardUsd.toFixed(2)} USDT` : `$${r.rewardUsd.toFixed(2)} Pending`}
+                      </span>
                     </div>
-                    <span className="text-xs font-black text-emerald-400 shrink-0">
-                      +${r.rewardUsd.toFixed(2)} USDT
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

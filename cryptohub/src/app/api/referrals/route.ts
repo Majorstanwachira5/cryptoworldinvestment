@@ -11,8 +11,9 @@ function buildStats(userId: string, req?: NextRequest): ReferralStats {
   const fx = getFxRates();
   const records = db.getReferrals(userId);
   const rewardUsd = db.getReferralRewardUsd();
+  const qualifiedRecords = records.filter((r) => r.status === "QUALIFIED");
   const totalEarnedUsd = Math.round(
-    records.reduce((a, r) => a + r.rewardUsd, 0) * 100
+    qualifiedRecords.reduce((a, r) => a + r.rewardUsd, 0) * 100
   ) / 100;
 
   const code = db.getReferralCode(userId);
@@ -66,17 +67,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: result.error }, { status: 400 });
     }
 
+    const isQualified = result.record.status === "QUALIFIED";
+    const creditedUsd = isQualified ? result.record.rewardUsd : 0;
+
     return NextResponse.json({
       success: true,
+      credited: isQualified,
+      status: result.record.status,
+      pendingRewardUsd: result.record.rewardUsd,
       reward: {
-        amountUsd: result.record.rewardUsd,
-        amountKes: usdToKes(result.record.rewardUsd),
+        amountUsd: creditedUsd,
+        amountKes: usdToKes(creditedUsd),
         accountType: "REAL" as const,
       },
       record: result.record,
       balance: result.balance,
       referrals: buildStats(userId, request),
-      creditedTo: auth.identity.user.email,
+      creditedTo: isQualified ? auth.identity.user.email : null,
     });
   } catch {
     return NextResponse.json(

@@ -10,6 +10,7 @@
     "backend"
   ],
   "scripts": {
+    "dev": "npm --prefix cryptohub run dev",
     "build:cryptohub": "npm --prefix cryptohub run build",
     "build:admin": "npm --prefix admin run build",
     "build:backend": "npm --prefix backend run build",

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { X, Lock, Mail, User, ShieldCheck, AlertTriangle } from "lucide-react";
+import { X, Lock, Mail, User, ShieldCheck, AlertTriangle, Gift } from "lucide-react";
 import { useToast } from "./Toast";
 import { useSession } from "./SessionProvider";
 import { AccountType } from "@/types";
@@ -11,17 +11,22 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: (accountType: AccountType) => void;
+  initialMode?: "LOGIN" | "REGISTER";
+  initialReferralCode?: string;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   onLoginSuccess,
+  initialMode,
+  initialReferralCode,
 }) => {
-  const [mode, setMode] = useState<"LOGIN" | "REGISTER">("LOGIN");
+  const [mode, setMode] = useState<"LOGIN" | "REGISTER">(initialMode || "LOGIN");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [referralCode, setReferralCode] = useState(initialReferralCode || "");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +38,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (isOpen) {
       setError(null);
       setPassword("");
+
+      let storedRef = (initialReferralCode || "").trim().toUpperCase();
+      if (!storedRef && typeof window !== "undefined") {
+        try {
+          const urlRef = new URLSearchParams(window.location.search).get("ref") || "";
+          const lsRef = window.localStorage.getItem("cwi_referral_code") || "";
+          storedRef = (urlRef || lsRef).trim().toUpperCase();
+        } catch {
+          // Ignore storage/URL errors.
+        }
+      }
+      if (storedRef) {
+        setReferralCode(storedRef);
+        setMode("REGISTER");
+      } else if (initialMode) {
+        setMode(initialMode);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialMode, initialReferralCode]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -62,10 +84,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
     try {
       const cleanEmail = email.trim().toLowerCase();
+      const cleanRef = referralCode.trim().toUpperCase();
       const user =
         mode === "REGISTER"
-          ? await register({ name: name.trim(), email: cleanEmail, password })
+          ? await register({
+              name: name.trim(),
+              email: cleanEmail,
+              password,
+              referralCode: cleanRef || undefined,
+            })
           : await login({ email: cleanEmail, password });
+
+      if (mode === "REGISTER" && typeof window !== "undefined") {
+        try {
+          window.localStorage.removeItem("cwi_referral_code");
+        } catch {
+          // Ignore storage error.
+        }
+      }
 
       showToast(
         "success",
@@ -202,6 +238,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </p>
             )}
           </div>
+
+          {isRegister && (
+            <div>
+              <label className="text-slate-400 block mb-1 font-medium">
+                Referral Code <span className="text-slate-600">(Optional)</span>
+              </label>
+              <div className="relative">
+                <Gift className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. CWI8A1B2C3D"
+                  className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono uppercase placeholder:normal-case placeholder:font-sans"
+                />
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1">
+                Referrer receives $30.00 USDT after your deposit is confirmed ($300+ tier).
+              </p>
+            </div>
+          )}
 
           {error && (
             <div className="flex items-start gap-2 bg-rose-950/50 border border-rose-800 rounded-lg px-3 py-2 text-rose-300">

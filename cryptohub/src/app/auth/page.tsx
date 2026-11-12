@@ -16,6 +16,7 @@ import {
   Zap,
   ArrowRight,
   ChevronRight,
+  Gift,
 } from "lucide-react";
 import { loginAccount, registerAccount, readToken } from "@/lib/auth/session";
 import { CwiLogo } from "@/components/CwiLogo";
@@ -93,6 +94,7 @@ export default function AuthPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +107,31 @@ export default function AuthPage() {
       router.replace("/");
     }
   }, [router]);
+
+  // Capture referral code from ?ref= query parameter or saved invitation
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlRef = (params.get("ref") || "").trim().toUpperCase();
+      const registerFlag = params.get("register") === "1";
+      const storedRef = (window.localStorage.getItem("cwi_referral_code") || "")
+        .trim()
+        .toUpperCase();
+      const effectiveRef = urlRef || storedRef;
+      if (urlRef) {
+        window.localStorage.setItem("cwi_referral_code", urlRef);
+      }
+      if (effectiveRef) {
+        setReferralCode(effectiveRef);
+        setMode("REGISTER");
+      } else if (registerFlag) {
+        setMode("REGISTER");
+      }
+    } catch {
+      // Ignore URL/storage access errors.
+    }
+  }, []);
 
   useEffect(() => {
     emailRef.current?.focus();
@@ -125,7 +152,18 @@ export default function AuthPage() {
     setLoading(true);
     try {
       if (mode === "REGISTER") {
-        await registerAccount({ name, email, password });
+        const cleanRef = referralCode.trim().toUpperCase();
+        await registerAccount({
+          name,
+          email,
+          password,
+          referralCode: cleanRef || undefined,
+        });
+        try {
+          window.localStorage.removeItem("cwi_referral_code");
+        } catch {
+          // Ignore storage error.
+        }
         setSuccess("Account created — taking you to the platform…");
       } else {
         await loginAccount({ email, password });
@@ -393,6 +431,29 @@ export default function AuthPage() {
                     </p>
                   )}
                 </div>
+
+                {/* referral code (register only) */}
+                {isRegister && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+                      Referral Code <span className="text-slate-600 font-normal">(Optional)</span>
+                    </label>
+                    <div className="relative">
+                      <Gift className="w-3.5 h-3.5 text-slate-600 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={referralCode}
+                        onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                        placeholder="e.g. CWI8A1B2C3D"
+                        className="input-field font-mono uppercase"
+                        style={{ paddingLeft: "2.25rem" }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-600 mt-1.5">
+                      $30.00 USDT reward unlocks to your referrer once your deposit is confirmed ($300+ tier).
+                    </p>
+                  </div>
+                )}
 
                 {/* error */}
                 {error && (

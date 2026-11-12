@@ -79,6 +79,7 @@ export async function registerAccount(input: {
   name: string;
   email: string;
   password: string;
+  referralCode?: string;
 }): Promise<AccessTokenResponse> {
   const res = await fetch("/api/auth/register", {
     method: "POST",
